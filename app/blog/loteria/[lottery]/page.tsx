@@ -65,6 +65,16 @@ const LOTTERY_DESCRIPTIONS: Record<string, { title: string; description: string;
 
 const VALID_LOTTERIES = Object.keys(LOTTERY_LABELS);
 
+// Pre-render all valid lottery category pages at build time.
+// This makes `params` a build-time known value (not runtime-dynamic),
+// which satisfies the cacheComponents (PPR) constraint.
+export function generateStaticParams() {
+  return VALID_LOTTERIES.map((lottery) => ({ lottery }));
+}
+
+// Unknown lottery slugs 404 immediately (no fallback rendering)
+export const dynamicParams = false;
+
 type Props = {
   params: Promise<{ lottery: string }>;
   searchParams: Promise<{ page?: string }>;
