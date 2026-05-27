@@ -10,17 +10,28 @@ import type { Metadata } from 'next';
 import type { BlogPost } from '@/types/blog';
 import { LOTTERY_LABELS } from '@/lib/blog';
 
+const BASE_URL = 'https://sorteiobilionario.com.br';
+
 export const metadata: Metadata = {
-  title: 'Blog de Loterias',
+  title: 'Blog de Loterias — Resultados e Análises',
   description:
-    'Resultados e análises estatísticas das loterias brasileiras: Mega-Sena, Lotofácil, Quina e mais. Atualizado a cada sorteio.',
-  alternates: { canonical: 'https://sorteiobilionario.com.br/blog' },
+    'Resultados e análises estatísticas das loterias brasileiras: Mega-Sena, Lotofácil, Quina, Lotomania e mais. Atualizado automaticamente após cada sorteio com IA.',
+  keywords: [
+    'resultado mega sena hoje', 'resultado lotofácil hoje', 'análise loterias',
+    'blog loterias brasileiras', 'dezenas frequentes', 'resultado caixa hoje',
+  ],
+  alternates: { canonical: `${BASE_URL}/blog` },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-snippet': -1, 'max-image-preview': 'large' } },
   openGraph: {
     title: 'Blog de Loterias — Sorteio Bilionário IA',
-    description: 'Resultados e análises estatísticas das loterias brasileiras.',
-    url: 'https://sorteiobilionario.com.br/blog',
+    description: 'Resultados e análises estatísticas das loterias brasileiras. Atualizado após cada sorteio.',
+    url: `${BASE_URL}/blog`,
+    siteName: 'Sorteio Bilionário IA',
+    locale: 'pt_BR',
     type: 'website',
+    images: [{ url: `${BASE_URL}/icons/icon-512.png`, width: 512, height: 512 }],
   },
+  twitter: { card: 'summary_large_image', title: 'Blog de Loterias — Sorteio Bilionário IA', description: 'Resultados e análises das loterias brasileiras com IA.' },
 };
 
 type Props = {

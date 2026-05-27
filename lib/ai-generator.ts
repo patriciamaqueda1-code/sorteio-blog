@@ -121,6 +121,48 @@ Retorne JSON com exatamente estes campos:
 }
 
 /**
+ * Gera imagem hiper-realista usando fal.ai FLUX Schnell.
+ * Requer FAL_API_KEY no Vercel env.
+ * Retorna a URL da imagem gerada, ou null se não configurado / falhar.
+ */
+export async function generateLotteryImage(imagePrompt: string): Promise<string | null> {
+  const apiKey = process.env.FAL_API_KEY;
+  if (!apiKey) {
+    console.warn('[ai-image] FAL_API_KEY não configurado — pulando geração de imagem.');
+    return null;
+  }
+  try {
+    const res = await fetch('https://fal.run/fal-ai/flux/schnell', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Key ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: imagePrompt,
+        image_size: 'landscape_16_9',  // 1360x768 — ideal para blog OG
+        num_inference_steps: 4,
+        num_images: 1,
+        enable_safety_checker: true,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.warn(`[ai-image] fal.ai ${res.status}: ${body.slice(0, 200)}`);
+      return null;
+    }
+    const data = await res.json() as { images?: Array<{ url: string }> };
+    const url = data.images?.[0]?.url ?? null;
+    if (url) console.log(`[ai-image] gerado: ${url.slice(0, 80)}…`);
+    return url;
+  } catch (err: any) {
+    console.warn('[ai-image] falhou:', err.message);
+    return null;
+  }
+}
+
+/**
  * Prompt para gerar imagem de capa com DALL-E 3 / Ideogram / Replicate.
  * Retorna o prompt a ser enviado para a API de imagem.
  */

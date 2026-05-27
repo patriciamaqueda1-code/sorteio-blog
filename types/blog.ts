@@ -21,4 +21,5 @@ export interface BlogPost {
   status: 'draft' | 'published' | 'archived';
   schema_json: object | null;
   source_urls: string[];
+  video_url: string | null;
 }

@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { supabase } from '@/lib/supabase';
-import { generateLotteryArticle, buildImagePrompt } from '@/lib/ai-generator';
+import { generateLotteryArticle, generateLotteryImage, buildImagePrompt } from '@/lib/ai-generator';
 import { slugify } from '@/lib/blog';
 
 function validateSecret(req: NextRequest): boolean {
@@ -169,6 +169,10 @@ export async function GET(req: NextRequest) {
         slug = `${baseSlug}-${++attempt}`;
       }
 
+      // 6b. Gerar imagem de capa via fal.ai FLUX (non-blocking — falha não cancela artigo)
+      const imagePromptText = buildImagePrompt(lottery, numero);
+      const coverImageUrl = await generateLotteryImage(imagePromptText);
+
       // 7. Schema.org
       const now = new Date().toISOString();
       const schema = {
@@ -198,7 +202,7 @@ export async function GET(req: NextRequest) {
           meta_description: article.meta_description,
           content_html: article.content_html,
           excerpt: article.excerpt,
-          cover_image_url: null,
+          cover_image_url: coverImageUrl,
           cover_alt: article.cover_alt,
           lottery,
           concurso_number: numero,
@@ -206,7 +210,7 @@ export async function GET(req: NextRequest) {
           reading_time_min: article.reading_time_min,
           source_urls: [],
           schema_json: schema,
-          image_prompt: buildImagePrompt(lottery, numero),
+          image_prompt: imagePromptText,
           status: 'published',
           published_at: now,
           created_at: now,
