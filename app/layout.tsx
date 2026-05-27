@@ -134,6 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={inter.variable}>
       <head>
+        <meta name="google-site-verification" content="LRSqzos6rQts-Ua9k2CwJTumoSN4FnmfFLIYJH8ijOQ" />
         <link rel="alternate" type="application/rss+xml" title="Blog de Loterias — Sorteio Bilionário IA" href={`${BASE_URL}/feed.xml`} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_SCHEMA) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_SCHEMA) }} />
