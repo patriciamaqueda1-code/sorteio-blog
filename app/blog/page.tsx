@@ -59,8 +59,8 @@ async function PostList({ page }: { page: number }) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {posts.map((post: BlogPost) => (
-          <PostCard key={post.id} post={post} />
+        {posts.map((post: BlogPost, index: number) => (
+          <PostCard key={post.id} post={post} priority={index === 0} />
         ))}
       </div>
       {totalPages > 1 && <Pagination current={page} total={totalPages} />}
@@ -69,7 +69,7 @@ async function PostList({ page }: { page: number }) {
 }
 
 // ─── Post card ───────────────────────────────────────────────────────────────
-function PostCard({ post }: { post: BlogPost }) {
+function PostCard({ post, priority = false }: { post: BlogPost; priority?: boolean }) {
   const date = post.published_at
     ? new Date(post.published_at).toLocaleDateString('pt-BR', {
         day: 'numeric',
@@ -89,10 +89,12 @@ function PostCard({ post }: { post: BlogPost }) {
             src={post.cover_image_url}
             alt={post.cover_alt}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-            decoding="async"
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
+            decoding={priority ? 'sync' : 'async'}
             width={640}
             height={360}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         </div>
       ) : (

@@ -43,7 +43,6 @@ export function LotteryBackground() {
           // Multi-stop: centro mais visível, fade suave até transparente
           background: 'radial-gradient(circle, rgba(246,210,122,0.13) 0%, rgba(246,210,122,0.07) 38%, rgba(246,210,122,0.02) 60%, transparent 75%)',
           animation: 'float-orb-a 20s ease-in-out infinite',
-          willChange: 'transform',
         }}
       />
       <div
@@ -53,7 +52,6 @@ export function LotteryBackground() {
           width: 520, height: 520, borderRadius: '50%',
           background: 'radial-gradient(circle, rgba(139,110,240,0.12) 0%, rgba(139,110,240,0.06) 38%, rgba(139,110,240,0.02) 60%, transparent 75%)',
           animation: 'float-orb-b 25s ease-in-out infinite',
-          willChange: 'transform',
         }}
       />
       <div
@@ -63,7 +61,6 @@ export function LotteryBackground() {
           width: 460, height: 460, borderRadius: '50%',
           background: 'radial-gradient(circle, rgba(91,224,166,0.10) 0%, rgba(91,224,166,0.05) 38%, rgba(91,224,166,0.01) 60%, transparent 75%)',
           animation: 'float-orb-c 18s ease-in-out infinite',
-          willChange: 'transform',
         }}
       />
 

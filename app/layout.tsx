@@ -1,14 +1,29 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { cacheLife } from 'next/cache';
+import { Inter, Playfair_Display, JetBrains_Mono } from 'next/font/google';
+import { cacheLife, cacheTag } from 'next/cache';
 import Link from 'next/link';
 import { LotteryBackground } from '@/components/LotteryBackground';
+import { supabase } from '@/lib/supabase';
 import './globals.css';
 
 const inter = Inter({
   subsets: ['latin'],
   display: 'optional',
   variable: '--font-inter',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-playfair',
+  weight: ['700'],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jetbrains',
+  weight: ['400'],
 });
 
 const BASE_URL = 'https://blog.sorteiobilionario.com.br';
@@ -92,6 +107,19 @@ const ORGANIZATION_SCHEMA = {
   },
 };
 
+// Logo URL from admin settings — cached for days
+async function getLogoUrl(): Promise<string | null> {
+  'use cache';
+  cacheLife('days');
+  cacheTag('site-settings');
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'blog.logo_url').maybeSingle();
+    return typeof data?.value === 'string' && data.value ? data.value : null;
+  } catch {
+    return null;
+  }
+}
+
 // Footer cached for weeks
 async function Footer() {
   'use cache';
@@ -140,9 +168,10 @@ async function Footer() {
   );
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const logoUrl = await getLogoUrl();
   return (
-    <html lang="pt-BR" className={inter.variable}>
+    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable}`}>
       <head>
         <meta name="google-site-verification" content="LRSqzos6rQts-Ua9k2CwJTumoSN4FnmfFLIYJH8ijOQ" />
         <link rel="alternate" type="application/rss+xml" title="Blog de Loterias — Sorteio Bilionário IA" href={`${BASE_URL}/feed.xml`} />
@@ -157,32 +186,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="border-b border-white/10 sticky top-0 z-50 backdrop-blur-md bg-[#07060d]/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <a href={MAIN_SITE_URL} className="flex items-center gap-2.5 shrink-0 group" style={{ textDecoration: 'none' }}>
-              {/* Logo ball — mesma imagem da home sorteiobilionario.com.br */}
-              <span style={{
-                position: 'relative', display: 'inline-block', width: 36, height: 36, flexShrink: 0,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle at 32% 28%, #ffffff 0%, #fff5d6 14%, #f6d27a 38%, #c08a2c 72%, #5a3a10 100%)',
-                boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.45), inset 0 4px 8px rgba(255,255,255,0.50), 0 4px 14px -4px rgba(192,138,44,0.70), 0 0 0 1px rgba(192,138,44,0.45)',
-                overflow: 'hidden',
-              }}>
+              {/* Logo — custom se admin configurou, senão bola CSS */}
+              {logoUrl ? (
                 <img
-                  src="https://sorteiobilionario.com.br/icons/sb-ball.png"
-                  alt=""
-                  aria-hidden="true"
+                  src={logoUrl}
+                  alt="Sorteio Bilionário IA"
                   width={36}
                   height={36}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                  style={{ width: 36, height: 36, flexShrink: 0, borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(192,138,44,0.45)', boxShadow: '0 4px 14px -4px rgba(192,138,44,0.70)' }}
+                  fetchPriority="high"
                 />
-              </span>
-              {/* Texto — igual ao da home */}
+              ) : (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-block', width: 36, height: 36, flexShrink: 0,
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle at 32% 28%, #ffffff 0%, #fff5d6 14%, #f6d27a 38%, #c08a2c 72%, #5a3a10 100%)',
+                    boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.45), inset 0 4px 8px rgba(255,255,255,0.50), 0 4px 14px -4px rgba(192,138,44,0.70), 0 0 0 1px rgba(192,138,44,0.45)',
+                  }}
+                />
+              )}
+              {/* Texto */}
               <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1, gap: 3 }}>
                 <span style={{
-                  fontFamily: '"Playfair Display", Georgia, serif',
+                  fontFamily: 'var(--font-playfair, "Playfair Display", Georgia, serif)',
                   fontWeight: 700, fontSize: 16, letterSpacing: '0.04em', textTransform: 'uppercase',
                   background: 'linear-gradient(180deg, #fff5d6 0%, #f6d27a 60%, #c08a2c 100%)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                 }}>Sorteio Bilionário</span>
-                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', paddingLeft: '0.22em' }}>· IA · Blog ·</span>
+                <span style={{ fontFamily: 'var(--font-jetbrains, "JetBrains Mono", monospace)', fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', paddingLeft: '0.22em' }}>· IA · Blog ·</span>
               </span>
             </a>
             <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-400" aria-label="Navegação principal">
