@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cacheLife } from 'next/cache';
 import Link from 'next/link';
+import { LotteryBackground } from '@/components/LotteryBackground';
 import './globals.css';
 
 const inter = Inter({
@@ -141,6 +142,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_SCHEMA) }} />
       </head>
       <body className="min-h-screen antialiased">
+        {/* Fundo animado: orbs flutuantes + bolas de loteria orbitando */}
+        <LotteryBackground />
+        {/* z-index: 1 garante que todo conteúdo fique acima do fundo fixo */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
         <header className="border-b border-white/10 sticky top-0 z-50 backdrop-blur-md bg-[#07060d]/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <a href={MAIN_SITE_URL} className="flex items-center gap-2 shrink-0">
@@ -161,6 +166,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         {children}
         <Footer />
+        </div>{/* fim z-index wrapper */}
       </body>
     </html>
   );

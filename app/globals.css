@@ -22,3 +22,37 @@ body {
 .prose-lottery ul li { margin: 0.25rem 0; }
 .prose-lottery strong { color: #fff; font-weight: 600; }
 .prose-lottery a { color: var(--brand-gold); text-decoration: underline; }
+
+/* ─── Lottery background: floating orbs + orbiting balls ─────────────────── */
+@keyframes float-orb-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(60px, -40px) scale(1.06); }
+  66%      { transform: translate(-40px, 30px) scale(0.96); }
+}
+@keyframes float-orb-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-70px, 50px) scale(1.04); }
+}
+@keyframes float-orb-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%      { transform: translate(30px, 60px) scale(0.94); }
+  80%      { transform: translate(-50px, -30px) scale(1.05); }
+}
+@keyframes orbit-a { 0%   { transform: rotate(0deg)   translateX(88px) rotate(0deg);   } 100% { transform: rotate(360deg)   translateX(88px) rotate(-360deg);   } }
+@keyframes orbit-b { 0%   { transform: rotate(60deg)  translateX(70px) rotate(-60deg); } 100% { transform: rotate(420deg)  translateX(70px) rotate(-420deg);   } }
+@keyframes orbit-c { 0%   { transform: rotate(120deg) translateX(80px) rotate(-120deg);} 100% { transform: rotate(480deg)  translateX(80px) rotate(-480deg);   } }
+@keyframes orbit-d { 0%   { transform: rotate(200deg) translateX(65px) rotate(-200deg);} 100% { transform: rotate(560deg)  translateX(65px) rotate(-560deg);   } }
+@keyframes orbit-e { 0%   { transform: rotate(280deg) translateX(84px) rotate(-280deg);} 100% { transform: rotate(640deg)  translateX(84px) rotate(-640deg);   } }
+@keyframes orbit-f { 0%   { transform: rotate(340deg) translateX(74px) rotate(-340deg);} 100% { transform: rotate(700deg)  translateX(74px) rotate(-700deg);   } }
+
+/* Mobile: esconde efeitos GPU-pesados (filter:blur + animações de balls) */
+@media (max-width: 768px) {
+  .lottery-orb,
+  .lottery-balls-cluster { display: none !important; }
+}
+
+/* Respeita preferência de movimento reduzido do SO */
+@media (prefers-reduced-motion: reduce) {
+  .lottery-orb,
+  .lottery-ball-item { animation: none !important; }
+}
