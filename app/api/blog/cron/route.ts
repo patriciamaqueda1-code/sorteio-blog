@@ -68,8 +68,8 @@ async function fetchLatestResult(lottery: string): Promise<MirrorResultado | nul
       return null;
     }
     return await res.json() as MirrorResultado;
-  } catch (err: any) {
-    console.warn(`[cron] ${lottery}: fetch error — ${err.message}`);
+  } catch (err) {
+    console.warn(`[cron] ${lottery}: fetch error — ${(err as Error).message}`);
     return null;
   }
 }
@@ -232,9 +232,9 @@ export async function GET(req: NextRequest) {
         void pingIndexNow(slug);
       }
 
-    } catch (err: any) {
-      console.error(`[cron] ${lottery} unexpected error:`, err.message);
-      results.push({ lottery, status: 'error', error: err.message });
+    } catch (err) {
+      console.error(`[cron] ${lottery} unexpected error:`, (err as Error).message);
+      results.push({ lottery, status: 'error', error: (err as Error).message });
     }
   }
 

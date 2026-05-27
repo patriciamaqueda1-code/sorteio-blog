@@ -102,6 +102,7 @@ Retorne JSON com exatamente estes campos:
   });
 
   const raw = completion.choices[0]?.message?.content ?? '{}';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let parsed: any;
   try { parsed = JSON.parse(raw); } catch { parsed = {}; }
 
@@ -195,8 +196,8 @@ export async function generateLotteryImage(imagePrompt: string): Promise<string 
     console.log(`[ai-image] gerado e salvo: ${url.slice(0, 80)}…`);
     return url;
 
-  } catch (err: any) {
-    console.warn('[ai-image] falhou:', err.message);
+  } catch (err) {
+    console.warn('[ai-image] falhou:', (err as Error).message);
     return null;
   }
 }

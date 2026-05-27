@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Parse + validação
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let body: any;
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
