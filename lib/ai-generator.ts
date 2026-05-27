@@ -175,8 +175,11 @@ async function _nvidia(prompt: string): Promise<Buffer> {
 export async function generateLotteryImage(imagePrompt: string): Promise<string | null> {
   let imgBuffer: Buffer | null = null;
 
-  // 1-3. Pollinations.ai — fallback chain (flux → turbo → sana), todos gratuitos
-  for (const model of ['flux', 'turbo', 'sana']) {
+  // 1-3. Pollinations.ai — ordem aleatória por execução (distribuição igual entre modelos)
+  // Cada cron run usa uma ordem diferente; quem for mais consistente vai aparecer mais nos logs.
+  const models = ['flux', 'turbo', 'sana'].sort(() => Math.random() - 0.5);
+  console.log(`[ai-image] ordem desta execução: ${models.join(' → ')}`);
+  for (const model of models) {
     try {
       imgBuffer = await _pollinations(imagePrompt, model);
       console.log(`[ai-image] ✓ Pollinations "${model}" (${imgBuffer.length} bytes)`);
