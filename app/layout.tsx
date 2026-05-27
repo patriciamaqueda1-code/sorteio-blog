@@ -96,11 +96,11 @@ async function Footer() {
           <div>
             <p className="text-[#f6d27a] font-semibold mb-3 uppercase tracking-wider text-xs">Blog</p>
             <ul className="space-y-2 text-gray-500">
-              <li><Link href="/blog" className="hover:text-white transition-colors">Todos os artigos</Link></li>
-              <li><Link href="/blog/loteria/megasena" className="hover:text-white transition-colors">Mega-Sena</Link></li>
-              <li><Link href="/blog/loteria/lotofacil" className="hover:text-white transition-colors">Lotofácil</Link></li>
-              <li><Link href="/blog/loteria/quina" className="hover:text-white transition-colors">Quina</Link></li>
-              <li><a href="/feed.xml" className="hover:text-white transition-colors">RSS Feed</a></li>
+              <li><a href={`${BASE_URL}/blog`} className="hover:text-white transition-colors">Todos os artigos</a></li>
+              <li><a href={`${BASE_URL}/blog/loteria/megasena`} className="hover:text-white transition-colors">Mega-Sena</a></li>
+              <li><a href={`${BASE_URL}/blog/loteria/lotofacil`} className="hover:text-white transition-colors">Lotofácil</a></li>
+              <li><a href={`${BASE_URL}/blog/loteria/quina`} className="hover:text-white transition-colors">Quina</a></li>
+              <li><a href={`${BASE_URL}/feed.xml`} className="hover:text-white transition-colors">RSS Feed</a></li>
             </ul>
           </div>
           {/* Plataforma */}
@@ -148,7 +148,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </a>
             <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-400" aria-label="Navegação principal">
               <a href={MAIN_SITE_URL} className="hover:text-white transition-colors hidden sm:block">App</a>
-              <Link href="/blog" className="hover:text-white transition-colors font-medium text-white">Blog</Link>
+              <a href={`${BASE_URL}/blog`} className="hover:text-white transition-colors font-medium text-white">Blog</a>
               <a href={`${MAIN_SITE_URL}/planos`} className="hover:text-[#f6d27a] text-[#f6d27a] transition-colors hidden sm:block">Planos</a>
               <a
                 href={MAIN_SITE_URL}

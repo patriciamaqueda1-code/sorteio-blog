@@ -123,63 +123,77 @@ Retorne JSON com exatamente estes campos:
 }
 
 /**
- * Gera imagem usando NVIDIA NIM API (stable-diffusion-xl-base-1.0).
+ * Gera imagem de capa usando Pollinations.ai (GRATUITO — sem API key).
  * Faz upload para Supabase Storage bucket "blog-images" e retorna URL pública.
- * Requer NVIDIA_API_KEY no Vercel env.
+ *
+ * Fallback: se NVIDIA_API_KEY estiver configurada, usa NVIDIA NIM SDXL.
  */
 export async function generateLotteryImage(imagePrompt: string): Promise<string | null> {
-  const apiKey = process.env.NVIDIA_API_KEY;
-  if (!apiKey) {
-    console.warn('[ai-image] NVIDIA_API_KEY não configurado — pulando geração de imagem.');
-    return null;
-  }
-
   try {
-    // NVIDIA NIM — OpenAI-compatible images endpoint
-    const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'stabilityai/stable-diffusion-xl-base-1.0',
-        prompt: imagePrompt,
-        n: 1,
-        size: '1024x1024',
-        response_format: 'b64_json',
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
+    let imgBuffer: Buffer;
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.warn(`[ai-image] NVIDIA NIM ${res.status}: ${body.slice(0, 300)}`);
-      return null;
+    if (process.env.NVIDIA_API_KEY) {
+      // NVIDIA NIM — OpenAI-compatible images endpoint (se configurado)
+      const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'stabilityai/stable-diffusion-xl-base-1.0',
+          prompt: imagePrompt,
+          n: 1,
+          size: '1024x1024',
+          response_format: 'b64_json',
+        }),
+        signal: AbortSignal.timeout(60_000),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.warn(`[ai-image] NVIDIA NIM ${res.status}: ${body.slice(0, 200)}`);
+        return null;
+      }
+
+      const data = await res.json() as {
+        data?: Array<{ b64_json?: string }>;
+        artifacts?: Array<{ base64?: string }>;
+      };
+      const base64 = data.data?.[0]?.b64_json ?? data.artifacts?.[0]?.base64;
+      if (!base64) { console.warn('[ai-image] NVIDIA NIM: sem imagem na resposta'); return null; }
+      imgBuffer = Buffer.from(base64, 'base64');
+
+    } else {
+      // Pollinations.ai — totalmente gratuito, sem API key, modelo FLUX
+      const encoded = encodeURIComponent(imagePrompt);
+      const seed = Math.floor(Math.random() * 9999);
+      const pollinationsUrl =
+        `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true&enhance=false`;
+
+      console.log('[ai-image] gerando via Pollinations.ai…');
+      const res = await fetch(pollinationsUrl, {
+        signal: AbortSignal.timeout(90_000),
+        headers: { 'Accept': 'image/*' },
+      });
+
+      if (!res.ok) {
+        console.warn(`[ai-image] Pollinations ${res.status}`);
+        return null;
+      }
+
+      const arrayBuffer = await res.arrayBuffer();
+      imgBuffer = Buffer.from(arrayBuffer);
     }
 
-    const data = await res.json() as {
-      data?: Array<{ b64_json?: string }>;
-      artifacts?: Array<{ base64?: string }>;
-    };
-
-    // Suporta resposta OpenAI-compat (data[].b64_json) e legado NVIDIA (artifacts[].base64)
-    const base64 = data.data?.[0]?.b64_json ?? data.artifacts?.[0]?.base64;
-    if (!base64) {
-      console.warn('[ai-image] NVIDIA NIM: nenhuma imagem na resposta');
-      return null;
-    }
-
-    // Upload para Supabase Storage (serviço — sem RLS, acesso total)
-    const imgBuffer = Buffer.from(base64, 'base64');
+    // Upload para Supabase Storage
     const fileName = `cover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-
     const { error: uploadError } = await supabase.storage
       .from('blog-images')
       .upload(fileName, imgBuffer, {
         contentType: 'image/jpeg',
-        cacheControl: '31536000', // 1 ano
+        cacheControl: '31536000',
         upsert: false,
       });
 
