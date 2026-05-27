@@ -72,9 +72,6 @@ export function generateStaticParams() {
   return VALID_LOTTERIES.map((lottery) => ({ lottery }));
 }
 
-// Unknown lottery slugs 404 immediately (no fallback rendering)
-export const dynamicParams = false;
-
 type Props = {
   params: Promise<{ lottery: string }>;
   searchParams: Promise<{ page?: string }>;
