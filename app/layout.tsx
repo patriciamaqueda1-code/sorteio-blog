@@ -148,8 +148,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div style={{ position: 'relative', zIndex: 1 }}>
         <header className="border-b border-white/10 sticky top-0 z-50 backdrop-blur-md bg-[#07060d]/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <a href={MAIN_SITE_URL} className="flex items-center gap-2 shrink-0">
-              <span className="font-bold text-lg text-[#f6d27a]">🎰 Sorteio Bilionário IA</span>
+            <a href={MAIN_SITE_URL} className="flex items-center gap-2.5 shrink-0 group" style={{ textDecoration: 'none' }}>
+              {/* Logo ball — mesma imagem da home sorteiobilionario.com.br */}
+              <span style={{
+                position: 'relative', display: 'inline-block', width: 36, height: 36, flexShrink: 0,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle at 32% 28%, #ffffff 0%, #fff5d6 14%, #f6d27a 38%, #c08a2c 72%, #5a3a10 100%)',
+                boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.45), inset 0 4px 8px rgba(255,255,255,0.50), 0 4px 14px -4px rgba(192,138,44,0.70), 0 0 0 1px rgba(192,138,44,0.45)',
+                overflow: 'hidden',
+              }}>
+                <img
+                  src="https://sorteiobilionario.com.br/icons/sb-ball.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={36}
+                  height={36}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                />
+              </span>
+              {/* Texto — igual ao da home */}
+              <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1, gap: 3 }}>
+                <span style={{
+                  fontFamily: '"Playfair Display", Georgia, serif',
+                  fontWeight: 700, fontSize: 16, letterSpacing: '0.04em', textTransform: 'uppercase',
+                  background: 'linear-gradient(180deg, #fff5d6 0%, #f6d27a 60%, #c08a2c 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                }}>Sorteio Bilionário</span>
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', paddingLeft: '0.22em' }}>· IA · Blog ·</span>
+              </span>
             </a>
             <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-400" aria-label="Navegação principal">
               <a href={MAIN_SITE_URL} className="hover:text-white transition-colors hidden sm:block">App</a>
