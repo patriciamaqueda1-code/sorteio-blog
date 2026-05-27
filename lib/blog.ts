@@ -14,7 +14,10 @@ export async function getPublishedPosts(page = 1): Promise<{ posts: BlogPost[]; 
     .order('published_at', { ascending: false })
     .range(from, to);
 
-  if (error) throw error;
+  if (error) {
+    console.error('[blog] getPublishedPosts error:', error.message);
+    return { posts: [], total: 0 };
+  }
   return { posts: (data ?? []) as BlogPost[], total: count ?? 0 };
 }
 
@@ -26,7 +29,10 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     .eq('status', 'published')
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[blog] getPostBySlug error:', error.message);
+    return null;
+  }
   return data as BlogPost | null;
 }
 
