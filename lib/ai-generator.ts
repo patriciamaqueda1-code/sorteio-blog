@@ -123,95 +123,101 @@ Retorne JSON com exatamente estes campos:
 }
 
 /**
- * Gera imagem de capa usando Pollinations.ai (GRATUITO — sem API key).
- * Faz upload para Supabase Storage bucket "blog-images" e retorna URL pública.
+ * Gera imagem de capa com fallback chain:
+ *   1. Pollinations.ai "flux"  — gratuito, sem API key
+ *   2. Pollinations.ai "turbo" — gratuito, sem API key
+ *   3. Pollinations.ai "sana"  — gratuito, sem API key
+ *   4. NVIDIA NIM SDXL         — requer NVIDIA_API_KEY (opcional)
  *
- * Fallback: se NVIDIA_API_KEY estiver configurada, usa NVIDIA NIM SDXL.
+ * Se um provedor falhar, passa automaticamente para o próximo.
+ * Upload do buffer resultante para Supabase Storage "blog-images".
  */
+
+// ── Helpers internos ────────────────────────────────────────────────────────
+
+async function _pollinations(prompt: string, model: string): Promise<Buffer> {
+  const encoded = encodeURIComponent(prompt);
+  const seed    = Math.floor(Math.random() * 9_999);
+  const url     = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=${model}&seed=${seed}&nologo=true&enhance=false`;
+  console.log(`[ai-image] Pollinations model="${model}"…`);
+  const res = await fetch(url, { signal: AbortSignal.timeout(90_000), headers: { Accept: 'image/*' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  // resposta muito pequena = erro silencioso (página de erro em HTML/JSON)
+  if (buf.length < 2_000) throw new Error(`resposta inválida (${buf.length} bytes)`);
+  return buf;
+}
+
+async function _nvidia(prompt: string): Promise<Buffer> {
+  console.log('[ai-image] NVIDIA NIM…');
+  const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'stabilityai/stable-diffusion-xl-base-1.0',
+      prompt, n: 1, size: '1024x1024', response_format: 'b64_json',
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 120)}`);
+  const data = await res.json() as { data?: Array<{ b64_json?: string }>; artifacts?: Array<{ base64?: string }> };
+  const base64 = data.data?.[0]?.b64_json ?? data.artifacts?.[0]?.base64;
+  if (!base64) throw new Error('sem imagem na resposta');
+  return Buffer.from(base64, 'base64');
+}
+
+// ── Função principal ────────────────────────────────────────────────────────
+
 export async function generateLotteryImage(imagePrompt: string): Promise<string | null> {
-  try {
-    let imgBuffer: Buffer;
+  let imgBuffer: Buffer | null = null;
 
-    if (process.env.NVIDIA_API_KEY) {
-      // NVIDIA NIM — OpenAI-compatible images endpoint (se configurado)
-      const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'stabilityai/stable-diffusion-xl-base-1.0',
-          prompt: imagePrompt,
-          n: 1,
-          size: '1024x1024',
-          response_format: 'b64_json',
-        }),
-        signal: AbortSignal.timeout(60_000),
-      });
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        console.warn(`[ai-image] NVIDIA NIM ${res.status}: ${body.slice(0, 200)}`);
-        return null;
-      }
-
-      const data = await res.json() as {
-        data?: Array<{ b64_json?: string }>;
-        artifacts?: Array<{ base64?: string }>;
-      };
-      const base64 = data.data?.[0]?.b64_json ?? data.artifacts?.[0]?.base64;
-      if (!base64) { console.warn('[ai-image] NVIDIA NIM: sem imagem na resposta'); return null; }
-      imgBuffer = Buffer.from(base64, 'base64');
-
-    } else {
-      // Pollinations.ai — totalmente gratuito, sem API key, modelo FLUX
-      const encoded = encodeURIComponent(imagePrompt);
-      const seed = Math.floor(Math.random() * 9999);
-      const pollinationsUrl =
-        `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true&enhance=false`;
-
-      console.log('[ai-image] gerando via Pollinations.ai…');
-      const res = await fetch(pollinationsUrl, {
-        signal: AbortSignal.timeout(90_000),
-        headers: { 'Accept': 'image/*' },
-      });
-
-      if (!res.ok) {
-        console.warn(`[ai-image] Pollinations ${res.status}`);
-        return null;
-      }
-
-      const arrayBuffer = await res.arrayBuffer();
-      imgBuffer = Buffer.from(arrayBuffer);
+  // 1-3. Pollinations.ai — fallback chain (flux → turbo → sana), todos gratuitos
+  for (const model of ['flux', 'turbo', 'sana']) {
+    try {
+      imgBuffer = await _pollinations(imagePrompt, model);
+      console.log(`[ai-image] ✓ Pollinations "${model}" (${imgBuffer.length} bytes)`);
+      break;
+    } catch (err) {
+      console.warn(`[ai-image] ✗ Pollinations "${model}":`, (err as Error).message);
     }
+  }
 
-    // Upload para Supabase Storage
+  // 4. NVIDIA NIM — último recurso, só se NVIDIA_API_KEY configurada
+  if (!imgBuffer && process.env.NVIDIA_API_KEY) {
+    try {
+      imgBuffer = await _nvidia(imagePrompt);
+      console.log(`[ai-image] ✓ NVIDIA NIM (${imgBuffer.length} bytes)`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ NVIDIA NIM:', (err as Error).message);
+    }
+  }
+
+  if (!imgBuffer) {
+    console.warn('[ai-image] todos os provedores falharam — artigo salvo sem imagem');
+    return null;
+  }
+
+  // Upload para Supabase Storage
+  try {
     const fileName = `cover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
     const { error: uploadError } = await supabase.storage
       .from('blog-images')
-      .upload(fileName, imgBuffer, {
-        contentType: 'image/jpeg',
-        cacheControl: '31536000',
-        upsert: false,
-      });
+      .upload(fileName, imgBuffer, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
 
     if (uploadError) {
       console.warn('[ai-image] Supabase Storage upload falhou:', uploadError.message);
       return null;
     }
 
-    const { data: urlData } = supabase.storage
-      .from('blog-images')
-      .getPublicUrl(fileName);
-
-    const url = urlData.publicUrl;
-    console.log(`[ai-image] gerado e salvo: ${url.slice(0, 80)}…`);
-    return url;
-
+    const { data: urlData } = supabase.storage.from('blog-images').getPublicUrl(fileName);
+    console.log(`[ai-image] salvo: ${urlData.publicUrl.slice(0, 80)}…`);
+    return urlData.publicUrl;
   } catch (err) {
-    console.warn('[ai-image] falhou:', (err as Error).message);
+    console.warn('[ai-image] upload falhou:', (err as Error).message);
     return null;
   }
 }
