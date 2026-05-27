@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { cacheLife, cacheTag } from 'next/cache';
-import { getAllPublishedSlugs } from '@/lib/blog';
+import { getAllPublishedSlugs, LOTTERY_LABELS } from '@/lib/blog';
+
+const LOTTERY_KEYS = Object.keys(LOTTERY_LABELS);
 
 // Cached 1 hour — revalidated by cacheTag('blog-posts') when new posts are published
 async function getSlugsCached(): Promise<string[]> {
@@ -20,9 +22,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${base}/blog`,
       lastModified: now,
       changeFrequency: 'daily',
-      priority: 0.9,
+      priority: 1.0,
     },
   ];
+
+  // Páginas de categoria por loteria — alta prioridade (autoridade tópica)
+  const categoryRoutes: MetadataRoute.Sitemap = LOTTERY_KEYS.map((lottery) => ({
+    url: `${base}/blog/loteria/${lottery}`,
+    lastModified: now,
+    changeFrequency: 'daily' as const,
+    priority: 0.9,
+  }));
 
   const articleRoutes: MetadataRoute.Sitemap = slugs.map((slug) => ({
     url: `${base}/blog/${slug}`,
@@ -31,5 +41,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...articleRoutes];
+  return [...staticRoutes, ...categoryRoutes, ...articleRoutes];
 }

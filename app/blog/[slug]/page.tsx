@@ -12,6 +12,71 @@ import { getPostBySlug, getRelatedPosts, LOTTERY_LABELS } from '@/lib/blog';
 import type { BlogPost } from '@/types/blog';
 
 const BASE_URL = 'https://blog.sorteiobilionario.com.br';
+const MAIN_SITE_URL = 'https://sorteiobilionario.com.br';
+
+// ─── FAQ estático por loteria — injetado como FAQPage schema ─────────────────
+const LOTTERY_FAQS: Record<string, Array<{ question: string; answer: string }>> = {
+  megasena: [
+    { question: 'Quantos números preciso acertar na Mega-Sena para ganhar?', answer: 'Na Mega-Sena você ganha acertando 4 dezenas (Quadra), 5 dezenas (Quina) ou 6 dezenas (Sena). O prêmio principal — a Sena — exige acertar as 6 dezenas sorteadas pela Caixa Econômica Federal.' },
+    { question: 'Quando ocorrem os sorteios da Mega-Sena?', answer: 'Os sorteios da Mega-Sena ocorrem às terças, quintas e sábados, às 20h (horário de Brasília), no Espaço da Sorte em São Paulo.' },
+    { question: 'O que acontece quando a Mega-Sena acumula?', answer: 'Quando nenhum apostador acerta as 6 dezenas, o prêmio principal acumula para o próximo concurso, podendo atingir centenas de milhões de reais como nas edições da Mega da Virada.' },
+    { question: 'Como a análise estatística ajuda nas apostas da Mega-Sena?', answer: 'A análise de dezenas quentes (mais frequentes) e frias (em atraso) pode embasar apostas mais informadas. Ferramentas de IA como o Sorteio Bilionário IA cruzam esses dados para sugerir combinações estatisticamente otimizadas.' },
+  ],
+  lotofacil: [
+    { question: 'Como funciona a Lotofácil?', answer: 'Na Lotofácil você escolhe de 15 a 20 números de 1 a 25. São sorteadas 15 dezenas e você ganha acertando de 11 a 15 números. O prêmio máximo é para quem acerta as 15 dezenas.' },
+    { question: 'Quando ocorrem os sorteios da Lotofácil?', answer: 'A Lotofácil sorteios de segunda a sábado, às 20h (horário de Brasília), sendo a loteria com maior frequência de concursos da Caixa Econômica Federal.' },
+    { question: 'Por que a Lotofácil é mais fácil de ganhar que a Mega-Sena?', answer: 'A probabilidade de acertar 15 dezenas na Lotofácil é de aproximadamente 1 em 3,3 milhões com o jogo mínimo — bem menor que a Mega-Sena (1 em 50 milhões). Além disso, há premiação a partir de 11 acertos.' },
+    { question: 'Quais são as dezenas mais frequentes na Lotofácil?', answer: 'As dezenas mais frequentes variam conforme o histórico de sorteios. A análise dos últimos 90 concursos pelo Sorteio Bilionário IA indica quais números aparecem com maior regularidade, auxiliando na escolha de apostas.' },
+  ],
+  quina: [
+    { question: 'Como funciona a Quina?', answer: 'Na Quina você escolhe de 5 a 15 números de 1 a 80. São sorteadas 5 dezenas. Há premiação para 2, 3, 4 ou 5 acertos, sendo 5 acertos o prêmio máximo (Quina).' },
+    { question: 'Quando ocorrem os sorteios da Quina?', answer: 'Os sorteios da Quina acontecem de segunda a sábado, às 20h (horário de Brasília).' },
+    { question: 'A Quina pode acumular?', answer: 'Sim. Se nenhum apostador acertar a Quina completa (5 números), o prêmio principal acumula para o próximo concurso. As faixas menores são distribuídas normalmente.' },
+    { question: 'Qual a probabilidade de ganhar na Quina?', answer: 'Com o jogo simples de 5 números, a probabilidade de acertar a Quina é de 1 em 24 milhões. Apostas com mais dezenas aumentam as chances e o custo proporcionalmente.' },
+  ],
+  lotomania: [
+    { question: 'Como funciona a Lotomania?', answer: 'Na Lotomania você marca exatamente 50 números de 1 a 100. São sorteados 20 números. Você ganha acertando de 15 a 20 dezenas — e também há prêmio para quem não acertar nenhuma (acerto zero).' },
+    { question: 'O que é o acerto zero na Lotomania?', answer: 'Se nenhum dos seus 50 números coincidir com os 20 sorteados, você ganha o prêmio de acerto zero — uma premiação exclusiva da Lotomania.' },
+    { question: 'Quando ocorrem os sorteios da Lotomania?', answer: 'Os sorteios da Lotomania acontecem às segundas e sextas-feiras, às 20h (horário de Brasília).' },
+    { question: 'Como a Lotomania pode acumular?', answer: 'Se nenhum apostador acertar as 20 dezenas, o prêmio principal acumula para o próximo concurso.' },
+  ],
+  duplasena: [
+    { question: 'O que é a Dupla Sena?', answer: 'A Dupla Sena realiza dois sorteios por concurso. Você escolhe de 6 a 15 números de 1 a 50 e concorre nos dois sorteios. Há premiação para 3, 4, 5 ou 6 acertos em cada sorteio.' },
+    { question: 'Quando ocorrem os sorteios da Dupla Sena?', answer: 'Os sorteios da Dupla Sena acontecem às terças, quintas e sábados, às 20h (horário de Brasília).' },
+    { question: 'Como funcionam os dois sorteios da Dupla Sena?', answer: 'No primeiro sorteio são determinados os ganhadores do prêmio principal. No segundo sorteio há mais uma chance de ganhar nas mesmas faixas, com os mesmos números marcados — dobrando as oportunidades.' },
+    { question: 'A Dupla Sena pode acumular?', answer: 'Sim. Se não houver ganhadores do prêmio principal nos dois sorteios do concurso, o valor acumula para o próximo.' },
+  ],
+  milionaria: [
+    { question: 'Como funciona a +Milionária?', answer: 'Na +Milionária você escolhe de 6 a 12 números de 1 a 50 e de 2 trevos de 1 a 6. O prêmio máximo exige acertar os 6 números sorteados e os 2 trevos.' },
+    { question: 'O que são os trevos da +Milionária?', answer: 'Os trevos são números adicionais (de 1 a 6) que integram o sorteio. Acertar mais trevos além dos números principais aumenta o prêmio — criando múltiplas faixas de premiação.' },
+    { question: 'Quando ocorrem os sorteios da +Milionária?', answer: 'Os sorteios da +Milionária acontecem às quartas e sábados, às 20h (horário de Brasília).' },
+    { question: 'Por que a +Milionária paga prêmios tão altos?', answer: 'A combinação de dezenas + trevos cria uma probabilidade muito baixa de acerto total, permitindo que os prêmios acumulem e atinjam valores milionários mais rapidamente que outras loterias.' },
+  ],
+  timemania: [
+    { question: 'Como funciona a Timemania?', answer: 'Na Timemania você escolhe 10 números de 1 a 80 e um Time do Coração (clube de futebol). São sorteados 7 números e um time. Há premiação para 3 a 7 acertos.' },
+    { question: 'O que é o Time do Coração na Timemania?', answer: 'É um clube de futebol inscrito associado ao seu jogo. Se o time sorteado coincidir com o seu, você ganha um prêmio adicional — mesmo sem acertar nenhum número.' },
+    { question: 'Quando ocorrem os sorteios da Timemania?', answer: 'Os sorteios da Timemania acontecem às terças, quintas e sábados, às 20h (horário de Brasília).' },
+    { question: 'Como os clubes de futebol se beneficiam da Timemania?', answer: 'Os clubes inscritos recebem percentual da arrecadação de cada concurso, contribuindo para o desenvolvimento do futebol brasileiro.' },
+  ],
+  diadesorte: [
+    { question: 'Como funciona o Dia de Sorte?', answer: 'No Dia de Sorte você escolhe de 7 a 15 números de 1 a 31 e um Mês da Sorte (de janeiro a dezembro). São sorteados 7 números e um mês. Há premiação para 4, 5, 6 ou 7 acertos.' },
+    { question: 'O que é o Mês da Sorte?', answer: 'É um mês do ano sorteado junto com os números. Acertar o Mês da Sorte além dos números principais amplia os prêmios e aumenta as chances de ganhar.' },
+    { question: 'Quando ocorrem os sorteios do Dia de Sorte?', answer: 'Os sorteios do Dia de Sorte acontecem às quartas e sábados, às 20h (horário de Brasília).' },
+    { question: 'O Dia de Sorte pode acumular?', answer: 'Sim. Se não houver ganhadores do prêmio principal (7 acertos), o valor acumula para o próximo concurso.' },
+  ],
+  supersete: [
+    { question: 'Como funciona a Super Sete?', answer: 'Na Super Sete você escolhe um número de 0 a 9 em cada uma das 7 colunas. São sorteados 7 números (um por coluna). Você ganha acertando 3, 4, 5, 6 ou 7 colunas.' },
+    { question: 'Por que a Super Sete é diferente das outras loterias?', answer: 'Usa colunas com dígitos de 0 a 9 — diferente das loterias de dezenas. Cada coluna é independente, criando uma mecânica única de apostas na Caixa Econômica Federal.' },
+    { question: 'Quando ocorrem os sorteios da Super Sete?', answer: 'Os sorteios da Super Sete acontecem às segundas, quartas e sextas-feiras, às 15h (horário de Brasília).' },
+    { question: 'A Super Sete pode acumular?', answer: 'Sim. Se não houver ganhadores do prêmio principal (7 colunas certas), o valor acumula para o próximo concurso.' },
+  ],
+};
+
+const DEFAULT_FAQS = [
+  { question: 'Como funcionam as loterias da Caixa Econômica Federal?', answer: 'As loterias da Caixa são jogos de azar regulamentados pelo governo federal brasileiro. Os prêmios são distribuídos aos apostadores que acertam as dezenas ou números sorteados em cada modalidade.' },
+  { question: 'Onde posso fazer minha aposta nas loterias?', answer: 'Você pode apostar em casas lotéricas credenciadas, pelo site oficial da Caixa Econômica Federal ou pelo aplicativo Loterias Online. A aposta mínima varia por modalidade.' },
+  { question: 'Como a análise estatística pode ajudar nas apostas?', answer: 'A análise identifica dezenas quentes (alta frequência) e frias (em atraso) no histórico de sorteios. Embora a loteria seja aleatória, dados estatísticos podem embasar escolhas mais informadas.' },
+];
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -44,7 +109,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'análise estatística',
       'Caixa Econômica Federal',
     ],
-    authors: [{ name: 'Sorteio Bilionário IA', url: BASE_URL }],
+    authors: [{ name: 'Sorteio Bilionário IA', url: MAIN_SITE_URL }],
     creator: 'Sorteio Bilionário IA',
     publisher: 'Sorteio Bilionário IA',
     category: 'Loterias',
@@ -220,24 +285,24 @@ async function ArticleContent({ slug }: { slug: string }) {
     keywords: post.tags.join(', '),
     datePublished: post.published_at,
     dateModified: post.published_at,
-    author: { '@type': 'Organization', name: 'Sorteio Bilionário IA', url: BASE_URL },
+    author: { '@type': 'Organization', name: 'Sorteio Bilionário IA', url: MAIN_SITE_URL },
     publisher: {
       '@type': 'Organization',
       name: 'Sorteio Bilionário IA',
-      url: BASE_URL,
-      logo: { '@type': 'ImageObject', url: `${BASE_URL}/icons/icon-512.png`, width: 512, height: 512 },
+      url: MAIN_SITE_URL,
+      logo: { '@type': 'ImageObject', url: 'https://sorteiobilionario.com.br/icons/icon-512.png', width: 512, height: 512 },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
     image: post.cover_image_url
       ? [{ '@type': 'ImageObject', url: post.cover_image_url, caption: post.cover_alt, width: 1360, height: 768 }]
-      : [{ '@type': 'ImageObject', url: `${BASE_URL}/icons/icon-512.png` }],
+      : [{ '@type': 'ImageObject', url: 'https://sorteiobilionario.com.br/icons/icon-512.png' }],
     ...(post.video_url && {
       video: {
         '@type': 'VideoObject',
         name: post.title,
         description: post.meta_description,
         contentUrl: post.video_url,
-        thumbnailUrl: post.cover_image_url ?? `${BASE_URL}/icons/icon-512.png`,
+        thumbnailUrl: post.cover_image_url ?? 'https://sorteiobilionario.com.br/icons/icon-512.png',
         uploadDate: post.published_at,
       },
     }),
@@ -247,24 +312,36 @@ async function ArticleContent({ slug }: { slug: string }) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Início', item: BASE_URL },
+      { '@type': 'ListItem', position: 1, name: 'Início', item: MAIN_SITE_URL },
       { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BASE_URL}/blog` },
-      ...(lotteryLabel ? [{ '@type': 'ListItem', position: 3, name: lotteryLabel, item: `${BASE_URL}/blog?lottery=${post.lottery}` }] : []),
+      ...(lotteryLabel ? [{ '@type': 'ListItem', position: 3, name: lotteryLabel, item: `${BASE_URL}/blog/${post.lottery}` }] : []),
       { '@type': 'ListItem', position: lotteryLabel ? 4 : 3, name: post.title, item: canonicalUrl },
     ],
+  };
+
+  // FAQPage schema — featured snippets no Google
+  const faqs = post.lottery ? (LOTTERY_FAQS[post.lottery] ?? DEFAULT_FAQS) : DEFAULT_FAQS;
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: { '@type': 'Answer', text: answer },
+    })),
   };
 
   return (
     <>
       {/* Breadcrumb visual */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
-        <Link href="/" className="hover:text-[#f6d27a] transition-colors">Início</Link>
+        <a href={MAIN_SITE_URL} className="hover:text-[#f6d27a] transition-colors">Início</a>
         <span>/</span>
         <Link href="/blog" className="hover:text-[#f6d27a] transition-colors">Blog</Link>
-        {lotteryLabel && (
+        {lotteryLabel && post.lottery && (
           <>
             <span>/</span>
-            <span className="text-[#f6d27a]">{lotteryLabel}</span>
+            <Link href={`/blog/${post.lottery}`} className="hover:text-[#f6d27a] transition-colors">{lotteryLabel}</Link>
           </>
         )}
       </nav>
@@ -324,6 +401,7 @@ async function ArticleContent({ slug }: { slug: string }) {
       {/* JSON-LD schemas */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(newsArticleSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       {/* CTA */}
       <div className="mt-10 p-6 rounded-2xl bg-[#f6d27a]/10 border border-[#f6d27a]/20 text-center">
@@ -332,13 +410,29 @@ async function ArticleContent({ slug }: { slug: string }) {
           Analise dezenas quentes, frias e padrões históricos. Nossa IA gera combinações otimizadas para Mega-Sena, Lotofácil e mais.
         </p>
         <a
-          href={BASE_URL}
+          href={MAIN_SITE_URL}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#f6d27a] text-black font-bold text-sm hover:bg-[#f6d27a]/90 transition-colors"
           rel="noopener"
         >
           Acessar Sorteio Bilionário IA →
         </a>
       </div>
+
+      {/* FAQ — featured snippets */}
+      <section className="mt-10 border-t border-white/10 pt-8" aria-labelledby="faq-heading">
+        <h2 id="faq-heading" className="text-xl font-bold mb-6">Perguntas Frequentes</h2>
+        <div className="space-y-4">
+          {faqs.map(({ question, answer }, i) => (
+            <details key={i} className="group rounded-xl bg-white/5 border border-white/10 hover:border-[#f6d27a]/20 transition-colors">
+              <summary className="flex items-center justify-between gap-4 cursor-pointer list-none p-4 text-sm font-semibold text-white select-none">
+                <span>{question}</span>
+                <span className="shrink-0 text-gray-500 group-open:rotate-180 transition-transform duration-200 text-lg leading-none">▾</span>
+              </summary>
+              <p className="px-4 pb-4 pt-1 text-sm text-gray-400 leading-relaxed">{answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
 
       {/* Related posts */}
       <Suspense fallback={null}>

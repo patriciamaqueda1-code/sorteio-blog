@@ -10,6 +10,7 @@ const inter = Inter({
 });
 
 const BASE_URL = 'https://blog.sorteiobilionario.com.br';
+const MAIN_SITE_URL = 'https://sorteiobilionario.com.br';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -95,27 +96,28 @@ async function Footer() {
             <p className="text-[#f6d27a] font-semibold mb-3 uppercase tracking-wider text-xs">Blog</p>
             <ul className="space-y-2 text-gray-500">
               <li><a href="/blog" className="hover:text-white transition-colors">Todos os artigos</a></li>
-              <li><a href="/blog?lottery=megasena" className="hover:text-white transition-colors">Mega-Sena</a></li>
-              <li><a href="/blog?lottery=lotofacil" className="hover:text-white transition-colors">Lotofácil</a></li>
-              <li><a href="/blog?lottery=quina" className="hover:text-white transition-colors">Quina</a></li>
+              <li><a href="/blog/loteria/megasena" className="hover:text-white transition-colors">Mega-Sena</a></li>
+              <li><a href="/blog/loteria/lotofacil" className="hover:text-white transition-colors">Lotofácil</a></li>
+              <li><a href="/blog/loteria/quina" className="hover:text-white transition-colors">Quina</a></li>
+              <li><a href="/feed.xml" className="hover:text-white transition-colors">RSS Feed</a></li>
             </ul>
           </div>
           {/* Plataforma */}
           <div>
             <p className="text-[#f6d27a] font-semibold mb-3 uppercase tracking-wider text-xs">Plataforma</p>
             <ul className="space-y-2 text-gray-500">
-              <li><a href={BASE_URL} className="hover:text-white transition-colors">App Principal</a></li>
-              <li><a href={`${BASE_URL}/planos`} className="hover:text-white transition-colors">Planos e preços</a></li>
-              <li><a href={`${BASE_URL}/mega-sena`} className="hover:text-white transition-colors">Gerar apostas IA</a></li>
+              <li><a href={MAIN_SITE_URL} className="hover:text-white transition-colors">App Principal</a></li>
+              <li><a href={`${MAIN_SITE_URL}/planos`} className="hover:text-white transition-colors">Planos e preços</a></li>
+              <li><a href={`${MAIN_SITE_URL}/mega-sena`} className="hover:text-white transition-colors">Gerar apostas IA</a></li>
             </ul>
           </div>
           {/* Legal */}
           <div>
             <p className="text-[#f6d27a] font-semibold mb-3 uppercase tracking-wider text-xs">Legal</p>
             <ul className="space-y-2 text-gray-500">
-              <li><a href={`${BASE_URL}/termos`} className="hover:text-white transition-colors">Termos de uso</a></li>
-              <li><a href={`${BASE_URL}/privacidade`} className="hover:text-white transition-colors">Privacidade & LGPD</a></li>
-              <li><a href={`${BASE_URL}/transparencia`} className="hover:text-white transition-colors">Transparência</a></li>
+              <li><a href={`${MAIN_SITE_URL}/termos`} className="hover:text-white transition-colors">Termos de uso</a></li>
+              <li><a href={`${MAIN_SITE_URL}/privacidade`} className="hover:text-white transition-colors">Privacidade & LGPD</a></li>
+              <li><a href={`${MAIN_SITE_URL}/transparencia`} className="hover:text-white transition-colors">Transparência</a></li>
             </ul>
           </div>
         </div>
@@ -132,21 +134,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={inter.variable}>
       <head>
+        <link rel="alternate" type="application/rss+xml" title="Blog de Loterias — Sorteio Bilionário IA" href={`${BASE_URL}/feed.xml`} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_SCHEMA) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_SCHEMA) }} />
       </head>
       <body className="min-h-screen antialiased">
         <header className="border-b border-white/10 sticky top-0 z-50 backdrop-blur-md bg-[#07060d]/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <a href={BASE_URL} className="flex items-center gap-2 shrink-0">
+            <a href={MAIN_SITE_URL} className="flex items-center gap-2 shrink-0">
               <span className="font-bold text-lg text-[#f6d27a]">🎰 Sorteio Bilionário IA</span>
             </a>
             <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-400" aria-label="Navegação principal">
-              <a href={BASE_URL} className="hover:text-white transition-colors hidden sm:block">App</a>
+              <a href={MAIN_SITE_URL} className="hover:text-white transition-colors hidden sm:block">App</a>
               <a href="/blog" className="hover:text-white transition-colors font-medium text-white">Blog</a>
-              <a href={`${BASE_URL}/planos`} className="hover:text-[#f6d27a] text-[#f6d27a] transition-colors hidden sm:block">Planos</a>
+              <a href={`${MAIN_SITE_URL}/planos`} className="hover:text-[#f6d27a] text-[#f6d27a] transition-colors hidden sm:block">Planos</a>
               <a
-                href={BASE_URL}
+                href={MAIN_SITE_URL}
                 className="px-4 py-1.5 rounded-lg bg-[#f6d27a] text-black text-xs font-bold hover:bg-[#f6d27a]/90 transition-colors"
               >
                 Gerar apostas →

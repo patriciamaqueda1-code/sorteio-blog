@@ -51,6 +51,28 @@ export async function getRelatedPosts(post: BlogPost, limit = 3): Promise<BlogPo
   return (data ?? []) as BlogPost[];
 }
 
+export async function getPostsByLottery(
+  lottery: string,
+  page = 1,
+): Promise<{ posts: BlogPost[]; total: number }> {
+  const from = (page - 1) * POSTS_PER_PAGE;
+  const to   = from + POSTS_PER_PAGE - 1;
+
+  const { data, error, count } = await supabase
+    .from('blog_posts')
+    .select('*', { count: 'exact' })
+    .eq('status', 'published')
+    .eq('lottery', lottery)
+    .order('published_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    console.error('[blog] getPostsByLottery error:', error.message);
+    return { posts: [], total: 0 };
+  }
+  return { posts: (data ?? []) as BlogPost[], total: count ?? 0 };
+}
+
 export async function getAllPublishedSlugs(): Promise<string[]> {
   const { data } = await supabase
     .from('blog_posts')

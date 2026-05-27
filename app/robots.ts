@@ -9,7 +9,10 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/'],
       },
     ],
-    sitemap: 'https://blog.sorteiobilionario.com.br/sitemap.xml',
+    sitemap: [
+      'https://blog.sorteiobilionario.com.br/sitemap.xml',
+      'https://blog.sorteiobilionario.com.br/feed.xml',
+    ],
     host: 'https://blog.sorteiobilionario.com.br',
   };
 }
