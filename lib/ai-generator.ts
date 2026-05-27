@@ -42,7 +42,8 @@ NUNCA prometa ganhos ou garanta resultados — use linguagem de probabilidade.
 NUNCA invente números ou dados — use apenas o que é fornecido.
 Cite sempre a Caixa Econômica Federal como fonte oficial.
 Tamanho ideal: 700–900 palavras.
-Formato: HTML semântico com h2, h3, p, ul, strong. Sem html/head/body — apenas o conteúdo interno.`;
+Formato do conteúdo: HTML semântico com h2, h3, p, ul, strong. Sem html/head/body — apenas o conteúdo interno.
+Responda SEMPRE em JSON válido com os campos: title, meta_description, excerpt, content_html, tags, slug.`;
 
 export async function generateLotteryArticle(input: ArticleInput): Promise<GeneratedArticle> {
   const lotteryName = LOTTERY_LABELS[input.lottery] ?? input.lottery;
@@ -77,10 +78,15 @@ ESTRUTURA OBRIGATÓRIA:
 5. Dicas de estratégia baseadas em dados (sem promessas de ganho)
 6. CTA sutil para análise estatística em sorteiobilionario.com.br
 
-TÍTULO: Crie um título SEO-otimizado com o nome da loteria, número do concurso e data.
-META DESCRIPTION: 150-160 caracteres, informativa.
-EXCERPT: 2 frases resumindo o artigo.
-TAGS: 5-8 tags relevantes para SEO.
+Retorne JSON com exatamente estes campos:
+{
+  "title": "título SEO com loteria, concurso e data",
+  "slug": "slug-url-amigavel",
+  "meta_description": "150-160 chars informativos",
+  "excerpt": "2 frases resumindo o artigo",
+  "content_html": "<h2>...</h2><p>...</p> (700-900 palavras em HTML semântico)",
+  "tags": ["tag1", "tag2", "..."]
+}
 `;
 
   const completion = await groq.chat.completions.create({
