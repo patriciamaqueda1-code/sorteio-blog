@@ -19,7 +19,7 @@ function validateSecret(req: NextRequest): boolean {
   return req.headers.get('authorization') === `Bearer ${secret}`;
 }
 
-// Loterias suportadas pela API da Caixa (path param)
+// Loterias suportadas
 const LOTTERIES = [
   'megasena',
   'lotofacil',
@@ -32,33 +32,34 @@ const LOTTERIES = [
   'supersete',
 ] as const;
 
-const CAIXA_BASE = 'https://servicebus2.caixa.gov.br/portaldeloterias/api';
+// Mirror que agrega dados da Caixa — acessível de qualquer IP (Vercel incluso)
+const MIRROR_BASE = 'https://loteriascaixa-api.herokuapp.com/api';
 
-interface CaixaResultado {
-  numero: number;
-  dataApuracao: string;           // "DD/MM/YYYY"
-  listaDezenas: string[];         // ordem de sorteio
-  dezenasSorteadasOrdemSorteio?: string[];
+// Alguns slugs diferem entre o nosso nome interno e o da API mirror
+const MIRROR_SLUG: Partial<Record<string, string>> = {
+  milionaria: 'maismilionaria',
+};
+
+interface MirrorResultado {
+  concurso: number;
+  data: string;             // "DD/MM/YYYY"
+  dezenas: string[];        // ordem crescente
+  dezenasOrdemSorteio?: string[];
   premiacoes: Array<{
     descricao: string;
     faixa: number;
-    numeroDeGanhadores: number;
+    ganhadores: number;     // mirror usa "ganhadores", não "numeroDeGanhadores"
     valorPremio: number;
   }>;
-  acumulado: boolean;
-  valorEstimadoProximoConcurso: number;
-  numeroConcursoAnterior?: number;
+  acumulou: boolean;
+  valorEstimadoProximoConcurso?: number;
 }
 
-async function fetchLatestResult(lottery: string): Promise<CaixaResultado | null> {
+async function fetchLatestResult(lottery: string): Promise<MirrorResultado | null> {
+  const slug = MIRROR_SLUG[lottery] ?? lottery;
   try {
-    const res = await fetch(`${CAIXA_BASE}/${lottery}/`, {
-      headers: {
-        'Accept': 'application/json, text/plain, */*',
-        'User-Agent': 'Mozilla/5.0 (compatible; SorteioBilionario-blog/1.0)',
-        'Origin': 'https://loterias.caixa.gov.br',
-        'Referer': 'https://loterias.caixa.gov.br/',
-      },
+    const res = await fetch(`${MIRROR_BASE}/${slug}/latest`, {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'curl/8.4.0' },
       signal: AbortSignal.timeout(15_000),
       cache: 'no-store',
     });
@@ -66,7 +67,7 @@ async function fetchLatestResult(lottery: string): Promise<CaixaResultado | null
       console.warn(`[cron] ${lottery}: HTTP ${res.status}`);
       return null;
     }
-    return await res.json() as CaixaResultado;
+    return await res.json() as MirrorResultado;
   } catch (err: any) {
     console.warn(`[cron] ${lottery}: fetch error — ${err.message}`);
     return null;
@@ -104,12 +105,12 @@ export async function GET(req: NextRequest) {
       }
 
       const {
-        numero,
-        dataApuracao,
-        listaDezenas,
-        dezenasSorteadasOrdemSorteio,
+        concurso: numero,
+        data: dataApuracao,
+        dezenas: listaDezenas,
+        dezenasOrdemSorteio,
         premiacoes,
-        acumulado,
+        acumulou: acumulado,
         valorEstimadoProximoConcurso,
       } = resultado;
 
@@ -126,8 +127,8 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // 3. Extrair números sorteados
-      const winningNumbers = (listaDezenas || dezenasSorteadasOrdemSorteio || [])
+      // 3. Extrair números sorteados (preferir ordem do sorteio se disponível)
+      const winningNumbers = (dezenasOrdemSorteio || listaDezenas || [])
         .map(Number)
         .filter((n) => !isNaN(n));
 
@@ -137,9 +138,10 @@ export async function GET(req: NextRequest) {
       }
 
       // 4. Extrair prêmio e ganhadores do 1.º prêmio (faixa 1)
+      // Mirror usa "ganhadores" no lugar de "numeroDeGanhadores"
       const prizeRow = premiacoes?.find((p) => p.faixa === 1) ?? premiacoes?.[0];
       const prizeMain = prizeRow?.valorPremio ?? 0;
-      const winnersCount = prizeRow?.numeroDeGanhadores ?? 0;
+      const winnersCount = prizeRow?.ganhadores ?? 0;
 
       // 5. Gerar artigo com IA
       const article = await generateLotteryArticle({
