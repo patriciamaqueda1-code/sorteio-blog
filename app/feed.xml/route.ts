@@ -2,6 +2,10 @@
  * GET /feed.xml — RSS 2.0 feed do blog de loterias
  * Ajuda o Google a descobrir novos artigos mais rapidamente.
  * Cached 1h, invalidado com blog-posts tag.
+ *
+ * NOTE: 'use cache' cannot be used directly on Route Handlers (they return
+ * non-serializable Response objects). Instead, the data-fetching logic lives
+ * in a separate 'use cache' function that returns plain serializable data.
  */
 import { NextResponse } from 'next/server';
 import { cacheTag, cacheLife } from 'next/cache';
@@ -11,7 +15,19 @@ const BASE_URL = 'https://blog.sorteiobilionario.com.br';
 const SITE_NAME = 'Blog de Loterias — Sorteio Bilionário IA';
 const SITE_DESC = 'Resultados e análises estatísticas das loterias brasileiras. Atualizado automaticamente após cada sorteio com IA.';
 
-export async function GET() {
+type FeedPost = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  meta_description: string;
+  published_at: string;
+  lottery: string | null;
+  tags: string[];
+  cover_image_url: string | null;
+};
+
+// Separate cached function — returns plain serializable data (not a Response)
+async function fetchFeedPosts(): Promise<FeedPost[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('blog-posts');
@@ -23,16 +39,13 @@ export async function GET() {
     .order('published_at', { ascending: false })
     .limit(20);
 
-  const items = (posts ?? []).map((post: {
-    slug: string;
-    title: string;
-    excerpt: string;
-    meta_description: string;
-    published_at: string;
-    lottery: string | null;
-    tags: string[];
-    cover_image_url: string | null;
-  }) => {
+  return (posts ?? []) as FeedPost[];
+}
+
+export async function GET() {
+  const posts = await fetchFeedPosts();
+
+  const items = posts.map((post) => {
     const url = `${BASE_URL}/blog/${post.slug}`;
     const description = (post.excerpt || post.meta_description).replace(/[<>&'"]/g, (c: string) =>
       ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c] ?? c)
