@@ -8,6 +8,7 @@
 
 import Groq from 'groq-sdk';
 import { slugify, LOTTERY_LABELS } from './blog';
+import { supabase } from './supabase';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -121,41 +122,79 @@ Retorne JSON com exatamente estes campos:
 }
 
 /**
- * Gera imagem hiper-realista usando fal.ai FLUX Schnell.
- * Requer FAL_API_KEY no Vercel env.
- * Retorna a URL da imagem gerada, ou null se não configurado / falhar.
+ * Gera imagem usando NVIDIA NIM API (stable-diffusion-xl-base-1.0).
+ * Faz upload para Supabase Storage bucket "blog-images" e retorna URL pública.
+ * Requer NVIDIA_API_KEY no Vercel env.
  */
 export async function generateLotteryImage(imagePrompt: string): Promise<string | null> {
-  const apiKey = process.env.FAL_API_KEY;
+  const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) {
-    console.warn('[ai-image] FAL_API_KEY não configurado — pulando geração de imagem.');
+    console.warn('[ai-image] NVIDIA_API_KEY não configurado — pulando geração de imagem.');
     return null;
   }
+
   try {
-    const res = await fetch('https://fal.run/fal-ai/flux/schnell', {
+    // NVIDIA NIM — OpenAI-compatible images endpoint
+    const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Key ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
+        model: 'stabilityai/stable-diffusion-xl-base-1.0',
         prompt: imagePrompt,
-        image_size: 'landscape_16_9',  // 1360x768 — ideal para blog OG
-        num_inference_steps: 4,
-        num_images: 1,
-        enable_safety_checker: true,
+        n: 1,
+        size: '1024x1024',
+        response_format: 'b64_json',
       }),
-      signal: AbortSignal.timeout(40_000),
+      signal: AbortSignal.timeout(60_000),
     });
+
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.warn(`[ai-image] fal.ai ${res.status}: ${body.slice(0, 200)}`);
+      console.warn(`[ai-image] NVIDIA NIM ${res.status}: ${body.slice(0, 300)}`);
       return null;
     }
-    const data = await res.json() as { images?: Array<{ url: string }> };
-    const url = data.images?.[0]?.url ?? null;
-    if (url) console.log(`[ai-image] gerado: ${url.slice(0, 80)}…`);
+
+    const data = await res.json() as {
+      data?: Array<{ b64_json?: string }>;
+      artifacts?: Array<{ base64?: string }>;
+    };
+
+    // Suporta resposta OpenAI-compat (data[].b64_json) e legado NVIDIA (artifacts[].base64)
+    const base64 = data.data?.[0]?.b64_json ?? data.artifacts?.[0]?.base64;
+    if (!base64) {
+      console.warn('[ai-image] NVIDIA NIM: nenhuma imagem na resposta');
+      return null;
+    }
+
+    // Upload para Supabase Storage (serviço — sem RLS, acesso total)
+    const imgBuffer = Buffer.from(base64, 'base64');
+    const fileName = `cover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('blog-images')
+      .upload(fileName, imgBuffer, {
+        contentType: 'image/jpeg',
+        cacheControl: '31536000', // 1 ano
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.warn('[ai-image] Supabase Storage upload falhou:', uploadError.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('blog-images')
+      .getPublicUrl(fileName);
+
+    const url = urlData.publicUrl;
+    console.log(`[ai-image] gerado e salvo: ${url.slice(0, 80)}…`);
     return url;
+
   } catch (err: any) {
     console.warn('[ai-image] falhou:', err.message);
     return null;
