@@ -44,6 +44,14 @@ export const metadata: Metadata = {
   },
   twitter: { card: 'summary_large_image', site: '@SorteioBilionario' },
   alternates: { canonical: BASE_URL },
+  icons: {
+    icon: [
+      { url: '/icons/icon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+    shortcut: '/icons/icon-32.png',
+  },
 };
 
 // WebSite + Organization schemas — injetados em toda página
