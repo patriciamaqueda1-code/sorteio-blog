@@ -36,6 +36,16 @@ const config: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [{ protocol: 'https', hostname: '**.supabase.co' }],
   },
+  // Redireciona URLs antigas /blog/:slug → /:slug (SEO 301 permanente)
+  async redirects() {
+    return [
+      {
+        source: '/blog/:slug((?!loteria|page|$).*)',
+        destination: '/:slug',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       { source: '/(.*)', headers: securityHeaders },

@@ -34,8 +34,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
+  // Artigos em /{slug} — subdomínio já é blog., sem duplicar /blog/
   const articleRoutes: MetadataRoute.Sitemap = slugs.map((slug) => ({
-    url: `${base}/blog/${slug}`,
+    url: `${base}/${slug}`,
     lastModified: now,
     changeFrequency: 'weekly' as const,
     priority: 0.7,

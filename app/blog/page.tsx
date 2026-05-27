@@ -117,7 +117,7 @@ function PostCard({ post }: { post: BlogPost }) {
 
         <h2 className="text-white font-semibold text-base leading-snug mb-2 line-clamp-2 flex-1">
           <Link
-            href={`/blog/${post.slug}`}
+            href={`/${post.slug}`}
             className="hover:text-[#f6d27a] transition-colors"
           >
             {post.title}

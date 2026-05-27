@@ -94,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await getArticleData(slug);
   if (!post) return { title: 'Artigo não encontrado' };
 
-  const canonicalUrl = `${BASE_URL}/blog/${post.slug}`;
+  const canonicalUrl = `${BASE_URL}/${post.slug}`;
   const lotteryLabel = post.lottery ? (LOTTERY_LABELS[post.lottery] ?? post.lottery) : 'Loterias';
   const wordCount = post.content_html.replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
 
@@ -237,7 +237,7 @@ async function RelatedPosts({ post }: { post: BlogPost }) {
         {related.map((r) => (
           <Link
             key={r.id}
-            href={`/blog/${r.slug}`}
+            href={`/${r.slug}`}
             className="block p-4 rounded-xl bg-white/5 border border-white/10 hover:border-[#f6d27a]/40 transition-colors"
           >
             {r.cover_image_url && (
@@ -265,7 +265,7 @@ async function ArticleContent({ slug }: { slug: string }) {
   const post = await getPostBySlug(slug);
   if (!post) notFound();
 
-  const canonicalUrl = `${BASE_URL}/blog/${post.slug}`;
+  const canonicalUrl = `${BASE_URL}/${post.slug}`;
   const publishedDate = new Date(post.published_at).toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });

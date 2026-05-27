@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
       'name': 'Sorteio Bilionário IA',
       'logo': { '@type': 'ImageObject', 'url': 'https://sorteiobilionario.com.br/icons/icon-512.png' },
     },
-    'mainEntityOfPage': { '@type': 'WebPage', '@id': `https://blog.sorteiobilionario.com.br/blog/${slug}` },
+    'mainEntityOfPage': { '@type': 'WebPage', '@id': `https://blog.sorteiobilionario.com.br/${slug}` },
   };
 
   // 7. Salvar no Supabase

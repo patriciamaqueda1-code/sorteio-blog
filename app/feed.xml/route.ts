@@ -46,7 +46,7 @@ export async function GET() {
   const posts = await fetchFeedPosts();
 
   const items = posts.map((post) => {
-    const url = `${BASE_URL}/blog/${post.slug}`;
+    const url = `${BASE_URL}/${post.slug}`;
     const description = (post.excerpt || post.meta_description).replace(/[<>&'"]/g, (c: string) =>
       ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c] ?? c)
     );

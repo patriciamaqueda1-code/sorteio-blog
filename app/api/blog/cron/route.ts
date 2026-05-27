@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
         },
         mainEntityOfPage: {
           '@type': 'WebPage',
-          '@id': `https://blog.sorteiobilionario.com.br/blog/${slug}`,
+          '@id': `https://blog.sorteiobilionario.com.br/${slug}`,
         },
       };
 
@@ -254,7 +254,7 @@ export async function GET(req: NextRequest) {
 // ─── IndexNow ping para Google/Bing indexar artigo imediatamente ─────────────
 async function pingIndexNow(slug: string) {
   const key = process.env.INDEXNOW_KEY!;
-  const url = `https://blog.sorteiobilionario.com.br/blog/${slug}`;
+  const url = `https://blog.sorteiobilionario.com.br/${slug}`;
   try {
     await fetch('https://api.indexnow.org/indexnow', {
       method: 'POST',
