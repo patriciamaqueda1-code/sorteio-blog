@@ -234,11 +234,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Invalidar cache de artigos se gerou novos
-  // Second arg = stale-while-revalidate window ('hours' = up to 5m stale while regenerating)
-  if (newPostsCount > 0) {
-    revalidateTag('blog-posts', 'hours');
-  }
+  // Invalidar cache de artigos imediatamente (expire:0 = sem stale-while-revalidate)
+  // Next 16: revalidateTag(tag, { expire: 0 }) expira agora; próxima visita busca dados frescos.
+  revalidateTag('blog-posts', { expire: 0 });
 
   return NextResponse.json({
     ok: true,
