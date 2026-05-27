@@ -9,7 +9,7 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-const BASE_URL = 'https://sorteiobilionario.com.br';
+const BASE_URL = 'https://blog.sorteiobilionario.com.br';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     locale: 'pt_BR',
     url: BASE_URL,
     siteName: 'Sorteio Bilionário IA',
-    images: [{ url: '/icons/icon-512.png', width: 512, height: 512, alt: 'Sorteio Bilionário IA' }],
+    images: [{ url: 'https://sorteiobilionario.com.br/icons/icon-512.png', width: 512, height: 512, alt: 'Sorteio Bilionário IA' }],
   },
   twitter: { card: 'summary_large_image', site: '@SorteioBilionario' },
   alternates: { canonical: BASE_URL },
@@ -55,7 +55,7 @@ const WEBSITE_SCHEMA = {
     '@type': 'Organization',
     name: 'Sorteio Bilionário IA',
     url: BASE_URL,
-    logo: { '@type': 'ImageObject', url: `${BASE_URL}/icons/icon-512.png`, width: 512, height: 512 },
+    logo: { '@type': 'ImageObject', url: 'https://sorteiobilionario.com.br/icons/icon-512.png', width: 512, height: 512 },
     sameAs: ['https://sorteiobilionario.com.br'],
   },
   potentialAction: {
@@ -70,7 +70,7 @@ const ORGANIZATION_SCHEMA = {
   '@type': 'Organization',
   name: 'Sorteio Bilionário IA',
   url: BASE_URL,
-  logo: `${BASE_URL}/icons/icon-512.png`,
+  logo: 'https://sorteiobilionario.com.br/icons/icon-512.png',
   description: 'Plataforma de análise estatística e geração de apostas para loterias brasileiras com Inteligência Artificial.',
   sameAs: ['https://sorteiobilionario.com.br'],
   contactPoint: {

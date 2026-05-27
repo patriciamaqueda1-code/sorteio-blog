@@ -12,7 +12,7 @@ async function getSlugsCached(): Promise<string[]> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const slugs = await getSlugsCached();
-  const base = 'https://sorteiobilionario.com.br';
+  const base = 'https://blog.sorteiobilionario.com.br';
   const now = new Date();
 
   const staticRoutes: MetadataRoute.Sitemap = [

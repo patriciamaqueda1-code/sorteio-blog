@@ -10,7 +10,7 @@ import type { Metadata } from 'next';
 import type { BlogPost } from '@/types/blog';
 import { LOTTERY_LABELS } from '@/lib/blog';
 
-const BASE_URL = 'https://sorteiobilionario.com.br';
+const BASE_URL = 'https://blog.sorteiobilionario.com.br';
 
 export const metadata: Metadata = {
   title: 'Blog de Loterias — Resultados e Análises',
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     siteName: 'Sorteio Bilionário IA',
     locale: 'pt_BR',
     type: 'website',
-    images: [{ url: `${BASE_URL}/icons/icon-512.png`, width: 512, height: 512 }],
+    images: [{ url: 'https://sorteiobilionario.com.br/icons/icon-512.png', width: 512, height: 512 }],
   },
   twitter: { card: 'summary_large_image', title: 'Blog de Loterias — Sorteio Bilionário IA', description: 'Resultados e análises das loterias brasileiras com IA.' },
 };

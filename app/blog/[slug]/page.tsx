@@ -11,7 +11,7 @@ import type { Metadata } from 'next';
 import { getPostBySlug, getRelatedPosts, LOTTERY_LABELS } from '@/lib/blog';
 import type { BlogPost } from '@/types/blog';
 
-const BASE_URL = 'https://sorteiobilionario.com.br';
+const BASE_URL = 'https://blog.sorteiobilionario.com.br';
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       tags: post.tags,
       images: post.cover_image_url
         ? [{ url: post.cover_image_url, alt: post.cover_alt, width: 1360, height: 768, type: 'image/jpeg' }]
-        : [{ url: `${BASE_URL}/icons/icon-512.png`, width: 512, height: 512 }],
+        : [{ url: 'https://sorteiobilionario.com.br/icons/icon-512.png', width: 512, height: 512 }],
     },
     twitter: {
       card: 'summary_large_image',
