@@ -11,8 +11,6 @@ const BASE_URL = 'https://blog.sorteiobilionario.com.br';
 const SITE_NAME = 'Blog de Loterias — Sorteio Bilionário IA';
 const SITE_DESC = 'Resultados e análises estatísticas das loterias brasileiras. Atualizado automaticamente após cada sorteio com IA.';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET() {
   'use cache';
   cacheLife('hours');
