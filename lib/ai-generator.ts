@@ -124,16 +124,76 @@ Retorne JSON com exatamente estes campos:
 
 /**
  * Gera imagem de capa com fallback chain:
- *   1. Pollinations.ai "flux"  — gratuito, sem API key
- *   2. Pollinations.ai "turbo" — gratuito, sem API key
- *   3. Pollinations.ai "sana"  — gratuito, sem API key
- *   4. NVIDIA NIM SDXL         — requer NVIDIA_API_KEY (opcional)
+ *   1. NVIDIA NIM FLUX.1-schnell — alta qualidade, requer NVIDIA_API_KEY
+ *   2. NVIDIA NIM SDXL           — qualidade sólida, requer NVIDIA_API_KEY
+ *   3. Pollinations.ai "flux"    — gratuito, sem API key
+ *   4. Pollinations.ai "turbo"   — gratuito, sem API key (último recurso)
  *
  * Se um provedor falhar, passa automaticamente para o próximo.
  * Upload do buffer resultante para Supabase Storage "blog-images".
  */
 
+// ── Paleta de cores por loteria ─────────────────────────────────────────────
+
+const LOTTERY_COLORS: Record<string, { primary: string; accent: string; balls: string }> = {
+  megasena:       { primary: '#009933', accent: '#00cc44', balls: 'vibrant green spheres' },
+  lotofacil:      { primary: '#930089', accent: '#cc00bb', balls: 'deep purple spheres' },
+  quina:          { primary: '#260085', accent: '#4400cc', balls: 'royal blue spheres' },
+  lotomania:      { primary: '#f97f02', accent: '#ffaa44', balls: 'bright orange spheres' },
+  timemania:      { primary: '#00985e', accent: '#00cc7a', balls: 'emerald green spheres' },
+  duplasena:      { primary: '#a4121a', accent: '#dd2233', balls: 'crimson red spheres' },
+  diadesorte:     { primary: '#8a4100', accent: '#c86000', balls: 'warm amber spheres' },
+  maismilionaria: { primary: '#4f008a', accent: '#7700cc', balls: 'deep violet spheres' },
+  supersete:      { primary: '#a8006e', accent: '#dd0099', balls: 'hot pink spheres' },
+  loteca:         { primary: '#005ca9', accent: '#0080ee', balls: 'electric blue spheres' },
+  federal:        { primary: '#003380', accent: '#0055cc', balls: 'navy blue spheres' },
+};
+
 // ── Helpers internos ────────────────────────────────────────────────────────
+
+async function _nvidiaFlux(prompt: string): Promise<Buffer> {
+  console.log('[ai-image] NVIDIA NIM FLUX.1-schnell…');
+  const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'black-forest-labs/flux.1-schnell',
+      prompt, n: 1, width: 1024, height: 1024, response_format: 'b64_json',
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 120)}`);
+  const data = await res.json() as { data?: Array<{ b64_json?: string }> };
+  const base64 = data.data?.[0]?.b64_json;
+  if (!base64) throw new Error('sem imagem na resposta');
+  return Buffer.from(base64, 'base64');
+}
+
+async function _nvidiaSdxl(prompt: string): Promise<Buffer> {
+  console.log('[ai-image] NVIDIA NIM SDXL…');
+  const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'stabilityai/stable-diffusion-xl-base-1.0',
+      prompt, n: 1, width: 1024, height: 1024, response_format: 'b64_json',
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 120)}`);
+  const data = await res.json() as { data?: Array<{ b64_json?: string }>; artifacts?: Array<{ base64?: string }> };
+  const base64 = data.data?.[0]?.b64_json ?? data.artifacts?.[0]?.base64;
+  if (!base64) throw new Error('sem imagem na resposta');
+  return Buffer.from(base64, 'base64');
+}
 
 async function _pollinations(prompt: string, model: string): Promise<Buffer> {
   const encoded = encodeURIComponent(prompt);
@@ -148,54 +208,48 @@ async function _pollinations(prompt: string, model: string): Promise<Buffer> {
   return buf;
 }
 
-async function _nvidia(prompt: string): Promise<Buffer> {
-  console.log('[ai-image] NVIDIA NIM…');
-  const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'stabilityai/stable-diffusion-xl-base-1.0',
-      prompt, n: 1, size: '1024x1024', response_format: 'b64_json',
-    }),
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 120)}`);
-  const data = await res.json() as { data?: Array<{ b64_json?: string }>; artifacts?: Array<{ base64?: string }> };
-  const base64 = data.data?.[0]?.b64_json ?? data.artifacts?.[0]?.base64;
-  if (!base64) throw new Error('sem imagem na resposta');
-  return Buffer.from(base64, 'base64');
-}
-
 // ── Função principal ────────────────────────────────────────────────────────
 
 export async function generateLotteryImage(imagePrompt: string): Promise<string | null> {
   let imgBuffer: Buffer | null = null;
 
-  // 1-3. Pollinations.ai — ordem aleatória por execução (distribuição igual entre modelos)
-  // Cada cron run usa uma ordem diferente; quem for mais consistente vai aparecer mais nos logs.
-  const models = ['flux', 'turbo', 'sana'].sort(() => Math.random() - 0.5);
-  console.log(`[ai-image] ordem desta execução: ${models.join(' → ')}`);
-  for (const model of models) {
+  // 1. NVIDIA NIM FLUX.1-schnell — primário, maior qualidade
+  if (!imgBuffer && process.env.NVIDIA_API_KEY) {
     try {
-      imgBuffer = await _pollinations(imagePrompt, model);
-      console.log(`[ai-image] ✓ Pollinations "${model}" (${imgBuffer.length} bytes)`);
-      break;
+      imgBuffer = await _nvidiaFlux(imagePrompt);
+      console.log(`[ai-image] ✓ NVIDIA NIM FLUX.1-schnell (${imgBuffer.length} bytes)`);
     } catch (err) {
-      console.warn(`[ai-image] ✗ Pollinations "${model}":`, (err as Error).message);
+      console.warn('[ai-image] ✗ NVIDIA NIM FLUX.1-schnell:', (err as Error).message);
     }
   }
 
-  // 4. NVIDIA NIM — último recurso, só se NVIDIA_API_KEY configurada
+  // 2. NVIDIA NIM SDXL — secundário NVIDIA
   if (!imgBuffer && process.env.NVIDIA_API_KEY) {
     try {
-      imgBuffer = await _nvidia(imagePrompt);
-      console.log(`[ai-image] ✓ NVIDIA NIM (${imgBuffer.length} bytes)`);
+      imgBuffer = await _nvidiaSdxl(imagePrompt);
+      console.log(`[ai-image] ✓ NVIDIA NIM SDXL (${imgBuffer.length} bytes)`);
     } catch (err) {
-      console.warn('[ai-image] ✗ NVIDIA NIM:', (err as Error).message);
+      console.warn('[ai-image] ✗ NVIDIA NIM SDXL:', (err as Error).message);
+    }
+  }
+
+  // 3. Pollinations.ai "flux" — fallback gratuito
+  if (!imgBuffer) {
+    try {
+      imgBuffer = await _pollinations(imagePrompt, 'flux');
+      console.log(`[ai-image] ✓ Pollinations "flux" (${imgBuffer.length} bytes)`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ Pollinations "flux":', (err as Error).message);
+    }
+  }
+
+  // 4. Pollinations.ai "turbo" — último recurso
+  if (!imgBuffer) {
+    try {
+      imgBuffer = await _pollinations(imagePrompt, 'turbo');
+      console.log(`[ai-image] ✓ Pollinations "turbo" (${imgBuffer.length} bytes)`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ Pollinations "turbo":', (err as Error).message);
     }
   }
 
@@ -226,14 +280,18 @@ export async function generateLotteryImage(imagePrompt: string): Promise<string 
 }
 
 /**
- * Prompt para gerar imagem de capa com DALL-E 3 / Ideogram / Replicate.
- * Retorna o prompt a ser enviado para a API de imagem.
+ * Prompt de imagem de capa específico por loteria.
+ * Usa as cores e identidade visual oficial de cada loteria brasileira.
  */
 export function buildImagePrompt(lottery: string, concurso: number): string {
-  const name = LOTTERY_LABELS[lottery] ?? lottery;
-  return `Professional lottery analysis infographic for "${name} Concurso ${concurso}".
-Dark background (#07060d), golden lottery balls floating in space, statistical charts with glowing data lines,
-Brazilian lottery aesthetic, cinematic lighting, ultra-detailed, 8K, sharp focus.
-No text overlay, no people, abstract data visualization theme.
-Color palette: deep purple, gold (#f6d27a), emerald green accents.`;
+  const name    = LOTTERY_LABELS[lottery] ?? lottery;
+  const palette = LOTTERY_COLORS[lottery] ?? { primary: '#260085', accent: '#f6d27a', balls: 'golden spheres' };
+
+  return `Dramatic lottery draw moment for "${name} Concurso ${concurso}". \
+${palette.balls} floating dramatically against ultra-dark background, \
+cinematic volumetric light beams in ${palette.primary}, bokeh depth of field, \
+lottery machine glass sphere visible, golden number display showing lucky numbers, \
+photorealistic 8K render, sharp focus, professional photography lighting. \
+Color palette: ${palette.primary}, ${palette.accent}, deep black, gold accents. \
+No text, no people, no faces. Pure abstract drama.`;
 }
