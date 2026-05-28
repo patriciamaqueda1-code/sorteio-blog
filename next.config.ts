@@ -60,11 +60,21 @@ const config: NextConfig = {
         source: '/_next/static/(.*)',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
+      // Homepage: cache 5 minutes at CDN, stale-while-revalidate 1 hour
+      {
+        source: '/',
+        headers: [{ key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=3600' }],
+      },
+      // Article pages: cache 1 hour at CDN, stale-while-revalidate 24 hours
+      {
+        source: '/:slug((?!_next|api|favicon|icons|og-image).*)',
+        headers: [{ key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' }],
+      },
     ];
   },
   compress: true,
   experimental: {
-    optimizePackageImports: ['@supabase/supabase-js'],
+    optimizePackageImports: ['@supabase/supabase-js', '@supabase/ssr', 'groq-sdk'],
   },
 };
 

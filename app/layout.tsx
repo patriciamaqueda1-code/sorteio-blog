@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display, JetBrains_Mono } from 'next/font/google';
 import { cacheLife, cacheTag } from 'next/cache';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { LotteryBackground } from '@/components/LotteryBackground';
 import { supabase } from '@/lib/supabase';
@@ -8,7 +9,7 @@ import './globals.css';
 
 const inter = Inter({
   subsets: ['latin'],
-  display: 'optional',
+  display: 'swap',
   variable: '--font-inter',
 });
 
@@ -180,7 +181,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="min-h-screen antialiased">
         {/* Fundo animado: orbs flutuantes + bolas de loteria orbitando */}
-        <LotteryBackground />
+        <Suspense fallback={null}>
+          <LotteryBackground />
+        </Suspense>
         {/* z-index: 1 garante que todo conteúdo fique acima do fundo fixo */}
         <div style={{ position: 'relative', zIndex: 1 }}>
         <header className="border-b border-white/10 sticky top-0 z-50 backdrop-blur-md bg-[#07060d]/80">
