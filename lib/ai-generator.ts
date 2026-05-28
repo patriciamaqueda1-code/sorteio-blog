@@ -154,6 +154,37 @@ const LOTTERY_COLORS: Record<string, { primary: string; accent: string; balls: s
 
 // ── Helpers internos ────────────────────────────────────────────────────────
 
+/**
+ * Google Imagen 3 via Gemini API — PRIMÁRIO (100 imagens/dia GRÁTIS com Google AI Studio)
+ * Requer GOOGLE_AI_KEY obtida em: https://aistudio.google.com/apikey (login com Gmail)
+ * Qualidade: fotorrealista, SynthID watermark, melhor suporte a texto em imagem.
+ */
+async function _googleImagen(prompt: string): Promise<Buffer> {
+  console.log('[ai-image] Google Imagen 3 (Gemini API)…');
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${process.env.GOOGLE_AI_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: '16:9',
+          safetyFilterLevel: 'block_only_high',
+          personGeneration: 'dont_allow',
+        },
+      }),
+      signal: AbortSignal.timeout(60_000),
+    },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`);
+  const data = await res.json() as { predictions?: Array<{ bytesBase64Encoded?: string }> };
+  const base64 = data.predictions?.[0]?.bytesBase64Encoded;
+  if (!base64) throw new Error('Imagen 3: sem imagem na resposta');
+  return Buffer.from(base64, 'base64');
+}
+
 /** Together AI — FLUX.1-schnell-Free (gratuito, qualidade excelente) */
 async function _togetherAI(prompt: string): Promise<Buffer> {
   console.log('[ai-image] Together AI FLUX.1-schnell-Free…');
@@ -334,7 +365,17 @@ async function compositeLotteryLogo(imgBuffer: Buffer, lottery: string): Promise
 export async function generateLotteryImage(imagePrompt: string, lottery?: string): Promise<string | null> {
   let imgBuffer: Buffer | null = null;
 
-  // 1. Together AI FLUX.1-schnell-Free — primário (gratuito, qualidade excelente)
+  // 1. Google Imagen 3 — PRIMÁRIO (100/dia grátis com Gmail via Google AI Studio)
+  if (!imgBuffer && process.env.GOOGLE_AI_KEY) {
+    try {
+      imgBuffer = await _googleImagen(imagePrompt);
+      console.log(`[ai-image] ✓ Google Imagen 3 (${imgBuffer.length} bytes)`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ Google Imagen 3:', (err as Error).message);
+    }
+  }
+
+  // 2. Together AI FLUX.1-schnell-Free — segunda opção (gratuito)
   if (!imgBuffer && process.env.TOGETHER_API_KEY) {
     try {
       imgBuffer = await _togetherAI(imagePrompt);
@@ -344,7 +385,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 2. fal.ai FLUX.1-schnell — segunda opção premium
+  // 3. fal.ai FLUX.1-schnell — terceira opção premium
   if (!imgBuffer && process.env.FAL_KEY) {
     try {
       imgBuffer = await _falAI(imagePrompt);
@@ -354,7 +395,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 3. NVIDIA NIM FLUX.1-schnell — terceiro
+  // 4. NVIDIA NIM FLUX.1-schnell
   if (!imgBuffer && process.env.NVIDIA_API_KEY) {
     try {
       imgBuffer = await _nvidiaFlux(imagePrompt);
@@ -364,7 +405,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 4. NVIDIA NIM SDXL — quarto
+  // 5. NVIDIA NIM SDXL
   if (!imgBuffer && process.env.NVIDIA_API_KEY) {
     try {
       imgBuffer = await _nvidiaSdxl(imagePrompt);
@@ -374,7 +415,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 5. Pollinations.ai "flux" — fallback emergência
+  // 6. Pollinations.ai "flux" — fallback emergência
   if (!imgBuffer) {
     try {
       imgBuffer = await _pollinations(imagePrompt, 'flux');
@@ -384,7 +425,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 6. Pollinations.ai "turbo" — último recurso absoluto
+  // 7. Pollinations.ai "turbo" — último recurso absoluto
   if (!imgBuffer) {
     try {
       imgBuffer = await _pollinations(imagePrompt, 'turbo');

@@ -143,7 +143,18 @@ export async function GET(req: NextRequest) {
       const prizeMain = prizeRow?.valorPremio ?? 0;
       const winnersCount = prizeRow?.ganhadores ?? 0;
 
-      // 5. Gerar artigo com IA
+      // 5. Gerar imagem de capa PRIMEIRO (antes do artigo)
+      // Ordem: imagem → conteúdo → publicar
+      const imgCtx: ImageContext = {
+        accumulated: acumulado,
+        prize_main: prizeMain,
+        winners_count: winnersCount,
+      };
+      const imagePromptText = buildImagePrompt(lottery, numero, imgCtx);
+      const coverImageUrl = await generateLotteryImage(imagePromptText, lottery);
+      console.log(`[cron] imagem: ${coverImageUrl ? '✓ gerada' : '✗ sem imagem (continua sem capa)'}`);
+
+      // 6. Gerar artigo com IA (após imagem estar pronta)
       const article = await generateLotteryArticle({
         lottery,
         concurso_number: numero,
@@ -155,7 +166,7 @@ export async function GET(req: NextRequest) {
         next_prize_estimate: valorEstimadoProximoConcurso ?? 0,
       });
 
-      // 6. Garantir slug único
+      // 7. Garantir slug único
       const baseSlug = article.slug || slugify(`${lottery}-${numero}`);
       let slug = baseSlug;
       let attempt = 0;
@@ -169,16 +180,7 @@ export async function GET(req: NextRequest) {
         slug = `${baseSlug}-${++attempt}`;
       }
 
-      // 6b. Gerar imagem de capa (non-blocking — falha não cancela artigo)
-      const imgCtx: ImageContext = {
-        accumulated: acumulado,
-        prize_main: prizeMain,
-        winners_count: winnersCount,
-      };
-      const imagePromptText = buildImagePrompt(lottery, numero, imgCtx);
-      const coverImageUrl = await generateLotteryImage(imagePromptText, lottery);
-
-      // 7. Schema.org
+      // 8. Schema.org + publicar
       const now = new Date().toISOString();
       const schema = {
         '@context': 'https://schema.org',
