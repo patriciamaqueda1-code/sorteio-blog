@@ -360,9 +360,134 @@ async function compositeLotteryLogo(imgBuffer: Buffer, lottery: string): Promise
   }
 }
 
+// ── Card visual local (sem API) ──────────────────────────────────────────────
+
+/**
+ * Gera um card visual profissional com os dados reais do sorteio.
+ * 100% local — usa sharp + SVG, zero API, zero custo, nunca falha.
+ * Resultado: imagem 1280×720 JPEG com logo da loteria composto.
+ */
+async function generateBrandedCard(data: CardData): Promise<Buffer> {
+  const W = 1280, H = 720;
+  const name    = (LOTTERY_LABELS[data.lottery] ?? data.lottery).toUpperCase();
+  const palette = LOTTERY_COLORS[data.lottery] ?? { primary: '#260085', accent: '#f6d27a', balls: '' };
+  const nums    = data.winning_numbers.slice(0, 10); // máximo 10 dezenas
+  const p       = palette.primary;
+  const a       = palette.accent;
+
+  // Prêmio formatado
+  const prizeStr = data.prize_main
+    ? data.prize_main.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+    : '';
+
+  // Status e cor
+  let statusText = '', statusColor = '#ffffff';
+  if (data.accumulated) {
+    statusText  = 'ACUMULOU!';
+    statusColor = '#ffd700';
+  } else if (!data.winners_count || data.winners_count === 0) {
+    statusText  = 'SEM GANHADORES · ACUMULA';
+    statusColor = '#ff9944';
+  } else if (data.winners_count === 1) {
+    statusText  = '1 GANHADOR!';
+    statusColor = '#44ffaa';
+  } else {
+    statusText  = `${data.winners_count} GANHADORES!`;
+    statusColor = '#44ffaa';
+  }
+
+  // Bolas numéricas — tamanho adaptável à quantidade de dezenas
+  const BALL_R   = nums.length <= 7 ? 46 : nums.length <= 10 ? 38 : nums.length <= 13 ? 32 : 26;
+  const BALL_GAP = nums.length <= 7 ? 18 : nums.length <= 10 ? 14 : 10;
+  const totalW   = nums.length * (BALL_R * 2 + BALL_GAP) - BALL_GAP;
+  const startX   = (W - totalW) / 2 + BALL_R;
+  const ballY    = 390;
+
+  const fontSize = Math.max(16, Math.round(BALL_R * 0.62));
+  const ballsSvg = nums.map((n, i) => {
+    const cx = startX + i * (BALL_R * 2 + BALL_GAP);
+    const label = n.toString().padStart(2, '0');
+    return `
+      <circle cx="${cx}" cy="${ballY}" r="${BALL_R}" fill="${p}" opacity="0.92"/>
+      <circle cx="${cx}" cy="${ballY}" r="${BALL_R - 4}" fill="none" stroke="${a}" stroke-width="2.5" opacity="0.55"/>
+      <circle cx="${cx}" cy="${ballY - Math.round(BALL_R*0.3)}" r="${Math.round(BALL_R*0.22)}" fill="white" opacity="0.12"/>
+      <text x="${cx}" y="${ballY + Math.round(fontSize*0.37)}" font-family="Arial Black,sans-serif" font-size="${fontSize}" font-weight="900" fill="white" text-anchor="middle">${label}</text>`;
+  }).join('');
+
+  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#070710"/>
+      <stop offset="50%"  stop-color="${p}28"/>
+      <stop offset="100%" stop-color="#070710"/>
+    </linearGradient>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="${p}"/>
+      <stop offset="100%" stop-color="${p}00"/>
+    </linearGradient>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="tgl" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Fundo -->
+  <rect width="${W}" height="${H}" fill="url(#bg)"/>
+
+  <!-- Círculos decorativos de fundo -->
+  <circle cx="0"   cy="0"   r="320" fill="${p}" opacity="0.07"/>
+  <circle cx="${W}" cy="${H}" r="380" fill="${a}" opacity="0.05"/>
+  <circle cx="${W/2}" cy="${H/2}" r="420" fill="${p}" opacity="0.03"/>
+
+  <!-- Barra superior colorida -->
+  <rect x="0" y="0" width="${W}" height="100" fill="url(#hdr)" opacity="0.85"/>
+
+  <!-- Nome da loteria -->
+  <text x="90" y="68" font-family="Arial Black,sans-serif" font-size="42" font-weight="900"
+        fill="white" filter="url(#tgl)">${name}</text>
+
+  <!-- Concurso no canto superior direito -->
+  <text x="${W - 80}" y="58" font-family="Arial,sans-serif" font-size="20" fill="${a}"
+        text-anchor="end" opacity="0.9">Concurso #${data.concurso}</text>
+  <text x="${W - 80}" y="80" font-family="Arial,sans-serif" font-size="14" fill="white"
+        text-anchor="end" opacity="0.5">RESULTADO OFICIAL</text>
+
+  <!-- Linha separadora -->
+  <line x1="80" y1="116" x2="${W - 80}" y2="116" stroke="${a}" stroke-width="1" opacity="0.35"/>
+
+  <!-- Label dezenas -->
+  <text x="${W/2}" y="168" font-family="Arial,sans-serif" font-size="14" fill="${a}"
+        text-anchor="middle" opacity="0.6" letter-spacing="4">DEZENAS SORTEADAS</text>
+
+  <!-- Bolas -->
+  <g filter="url(#gl)">${ballsSvg}</g>
+
+  <!-- Linha separadora inferior -->
+  <line x1="80" y1="${H - 148}" x2="${W - 80}" y2="${H - 148}" stroke="${a}" stroke-width="1" opacity="0.3"/>
+
+  <!-- Status (ACUMULOU / GANHADORES) -->
+  <text x="${W/2}" y="${H - 100}" font-family="Arial Black,sans-serif" font-size="32" font-weight="900"
+        fill="${statusColor}" text-anchor="middle" filter="url(#tgl)">${statusText}</text>
+
+  <!-- Prêmio -->
+  ${prizeStr ? `<text x="${W/2}" y="${H - 60}" font-family="Arial,sans-serif" font-size="20" fill="white"
+        text-anchor="middle" opacity="0.85">${data.accumulated ? 'Próximo prêmio estimado: ' : 'Prêmio: '}${prizeStr}</text>` : ''}
+
+  <!-- Marca bottom right -->
+  <text x="${W - 80}" y="${H - 28}" font-family="Arial,sans-serif" font-size="13" fill="${a}"
+        text-anchor="end" opacity="0.5">sorteiobilionario.com.br</text>
+</svg>`;
+
+  return sharp(Buffer.from(svg)).jpeg({ quality: 95 }).toBuffer();
+}
+
 // ── Função principal ────────────────────────────────────────────────────────
 
-export async function generateLotteryImage(imagePrompt: string, lottery?: string): Promise<string | null> {
+export async function generateLotteryImage(imagePrompt: string, lottery?: string, cardData?: CardData): Promise<string | null> {
   let imgBuffer: Buffer | null = null;
 
   // 1. Google Imagen 3 — PRIMÁRIO (100/dia grátis com Gmail via Google AI Studio)
@@ -435,6 +560,16 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
+  // 8. Card visual local — FALLBACK GARANTIDO (zero API, zero custo, nunca falha)
+  if (!imgBuffer && cardData) {
+    try {
+      imgBuffer = await generateBrandedCard(cardData);
+      console.log(`[ai-image] ✓ Card local gerado (${imgBuffer.length} bytes) — sem API externa`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ Card local:', (err as Error).message);
+    }
+  }
+
   if (!imgBuffer) {
     console.warn('[ai-image] todos os provedores falharam — artigo salvo sem imagem');
     return null;
@@ -470,6 +605,19 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
 export interface ImageContext {
   accumulated?: boolean;
   prize_main?: number;       // valor em R$
+  winners_count?: number;
+}
+
+/**
+ * Dados do sorteio para gerar card visual local (sem API).
+ * Passado para generateLotteryImage como fallback garantido.
+ */
+export interface CardData {
+  lottery: string;
+  concurso: number;
+  winning_numbers: number[];
+  prize_main?: number;
+  accumulated?: boolean;
   winners_count?: number;
 }
 

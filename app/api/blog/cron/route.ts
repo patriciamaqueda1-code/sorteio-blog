@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { supabase } from '@/lib/supabase';
-import { generateLotteryArticle, generateLotteryImage, buildImagePrompt, type ImageContext } from '@/lib/ai-generator';
+import { generateLotteryArticle, generateLotteryImage, buildImagePrompt, type ImageContext, type CardData } from '@/lib/ai-generator';
 import { slugify } from '@/lib/blog';
 
 function validateSecret(req: NextRequest): boolean {
@@ -150,9 +150,18 @@ export async function GET(req: NextRequest) {
         prize_main: prizeMain,
         winners_count: winnersCount,
       };
+      // CardData garante que sempre haverá imagem (card local, zero API)
+      const cardData: CardData = {
+        lottery,
+        concurso: numero,
+        winning_numbers: winningNumbers,
+        prize_main: prizeMain,
+        accumulated: acumulado,
+        winners_count: winnersCount,
+      };
       const imagePromptText = buildImagePrompt(lottery, numero, imgCtx);
-      const coverImageUrl = await generateLotteryImage(imagePromptText, lottery);
-      console.log(`[cron] imagem: ${coverImageUrl ? '✓ gerada' : '✗ sem imagem (continua sem capa)'}`);
+      const coverImageUrl = await generateLotteryImage(imagePromptText, lottery, cardData);
+      console.log(`[cron] imagem: ${coverImageUrl ? '✓ gerada' : '✗ falhou'}`);
 
       // 6. Gerar artigo com IA (após imagem estar pronta)
       const article = await generateLotteryArticle({
