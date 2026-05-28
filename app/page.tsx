@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getPublishedPosts } from '@/lib/blog';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import type { BlogPost } from '@/types/blog';
 import { LOTTERY_LABELS } from '@/lib/blog';
@@ -87,17 +88,15 @@ function PostCard({ post, priority = false }: { post: BlogPost; priority?: boole
       {/* Cover — clicável */}
       <Link href={`/${post.slug}`} tabIndex={-1} aria-hidden="true">
         {post.cover_image_url ? (
-          <div className="aspect-video overflow-hidden">
-            <img
+          <div className="relative aspect-video overflow-hidden">
+            <Image
               src={post.cover_image_url}
               alt={post.cover_alt}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              loading={priority ? 'eager' : 'lazy'}
-              fetchPriority={priority ? 'high' : 'auto'}
-              decoding={priority ? 'sync' : 'async'}
-              width={640}
-              height={360}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              priority={priority}
+              quality={75}
             />
           </div>
         ) : (

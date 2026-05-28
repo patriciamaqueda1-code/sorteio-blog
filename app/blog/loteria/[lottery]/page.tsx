@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { cacheLife, cacheTag } from 'next/cache';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getPostsByLottery, LOTTERY_LABELS } from '@/lib/blog';
 import type { BlogPost } from '@/types/blog';
@@ -139,8 +140,8 @@ async function LotteryPostList({ lottery, page }: { lottery: string; page: numbe
             {/* Cover — clicável */}
             <Link href={`/${post.slug}`} tabIndex={-1} aria-hidden="true">
               {post.cover_image_url ? (
-                <div className="aspect-video overflow-hidden">
-                  <img src={post.cover_image_url} alt={post.cover_alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" width={640} height={360} />
+                <div className="relative aspect-video overflow-hidden">
+                  <Image src={post.cover_image_url} alt={post.cover_alt} fill className="object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" sizes="(max-width:768px) 100vw, (max-width:1200px) 50vw, 33vw" quality={75} />
                 </div>
               ) : (
                 <div className="aspect-video bg-gradient-to-br from-purple-900/40 via-[#07060d] to-emerald-900/20 flex items-center justify-center">

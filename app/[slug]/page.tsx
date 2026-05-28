@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getPostBySlug, getRelatedPosts, LOTTERY_LABELS } from '@/lib/blog';
 import { LotteryNav } from '@/components/LotteryNav';
@@ -242,8 +243,8 @@ async function RelatedPosts({ post }: { post: BlogPost }) {
             className="block p-4 rounded-xl bg-white/5 border border-white/10 hover:border-[#f6d27a]/40 transition-colors"
           >
             {r.cover_image_url && (
-              <div className="aspect-video overflow-hidden rounded-lg mb-3">
-                <img src={r.cover_image_url} alt={r.cover_alt} className="w-full h-full object-cover" loading="lazy" width={320} height={180} />
+              <div className="relative aspect-video overflow-hidden rounded-lg mb-3">
+                <Image src={r.cover_image_url} alt={r.cover_alt} fill className="object-cover" loading="lazy" sizes="(max-width:768px) 100vw, 320px" quality={75} />
               </div>
             )}
             <p className="text-xs text-[#f6d27a] font-medium uppercase tracking-wider mb-1">
@@ -352,16 +353,15 @@ async function ArticleContent({ slug }: { slug: string }) {
 
       {/* Cover image */}
       {post.cover_image_url && (
-        <div className="rounded-2xl overflow-hidden mb-8 aspect-video shadow-2xl shadow-black/40">
-          <img
+        <div className="relative rounded-2xl overflow-hidden mb-8 aspect-video shadow-2xl shadow-black/40">
+          <Image
             src={post.cover_image_url}
             alt={post.cover_alt}
-            className="w-full h-full object-cover"
-            width={1360}
-            height={768}
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
+            fill
+            className="object-cover"
+            sizes="(max-width:1200px) 100vw, 1200px"
+            priority
+            quality={85}
           />
         </div>
       )}
