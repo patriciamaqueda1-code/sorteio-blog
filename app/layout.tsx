@@ -207,8 +207,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   }}
                 />
               )}
-              {/* Texto */}
-              <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1, gap: 3 }}>
+              {/* Texto — oculto em mobile para evitar overflow */}
+              <span className="hidden sm:inline-flex" style={{ flexDirection: 'column', lineHeight: 1, gap: 3 }}>
                 <span style={{
                   fontFamily: 'var(--font-playfair, "Playfair Display", Georgia, serif)',
                   fontWeight: 700, fontSize: 16, letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -220,7 +220,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </a>
             <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-400" aria-label="Navegação principal">
               <a href={MAIN_SITE_URL} className="hover:text-white transition-colors hidden sm:block">App</a>
-              <a href={BASE_URL} className="hover:text-white transition-colors font-medium text-white">Blog</a>
+              <a href={BASE_URL} className="hover:text-white transition-colors font-medium text-white hidden sm:block">Blog</a>
               <a href={`${MAIN_SITE_URL}/planos`} className="hover:text-[#f6d27a] text-[#f6d27a] transition-colors hidden sm:block">Planos</a>
               <a
                 href={MAIN_SITE_URL}
