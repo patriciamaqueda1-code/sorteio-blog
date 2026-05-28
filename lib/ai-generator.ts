@@ -7,6 +7,9 @@
  */
 
 import Groq from 'groq-sdk';
+import path from 'path';
+import { existsSync } from 'fs';
+import sharp from 'sharp';
 import { slugify, LOTTERY_LABELS } from './blog';
 import { supabase } from './supabase';
 
@@ -208,9 +211,73 @@ async function _pollinations(prompt: string, model: string): Promise<Buffer> {
   return buf;
 }
 
+// ── Composição de logo da loteria ────────────────────────────────────────────
+
+/**
+ * Composta o logo oficial da loteria no canto inferior esquerdo da imagem gerada.
+ * Adiciona um fundo semi-transparente arredondado para garantir contraste em qualquer cena.
+ * Se o logo não existir, retorna o buffer original sem alteração (fail-safe).
+ */
+async function compositeLotteryLogo(imgBuffer: Buffer, lottery: string): Promise<Buffer> {
+  const logosDir = path.join(process.cwd(), 'public', 'logos');
+  const logoPath = path.join(logosDir, `${lottery}.png`);
+
+  if (!existsSync(logoPath)) {
+    console.log(`[ai-image] logo não encontrado para "${lottery}" — pulando composição`);
+    return imgBuffer;
+  }
+
+  try {
+    const LOGO_MAX_W = 210;
+    const LOGO_MAX_H = 95;
+    const PADDING    = 24;
+
+    // Redimensionar logo mantendo proporção
+    const { data: logoData, info: logoInfo } = await sharp(logoPath)
+      .resize({ width: LOGO_MAX_W, height: LOGO_MAX_H, fit: 'inside', withoutEnlargement: true })
+      .png()
+      .toBuffer({ resolveWithObject: true });
+
+    const lw = logoInfo.width;
+    const lh = logoInfo.height;
+
+    // Detectar dimensões reais da imagem base
+    const meta  = await sharp(imgBuffer).metadata();
+    const imgH  = meta.height ?? 1024;
+
+    // Fundo arredondado semi-transparente atrás do logo
+    const bgW   = lw + 24;
+    const bgH   = lh + 16;
+    const bgSvg = Buffer.from(
+      `<svg width="${bgW}" height="${bgH}" xmlns="http://www.w3.org/2000/svg">` +
+      `<rect width="${bgW}" height="${bgH}" rx="12" fill="rgba(0,0,0,0.62)"/>` +
+      `</svg>`,
+    );
+
+    const bgLeft   = PADDING - 12;
+    const bgTop    = imgH - lh - PADDING - 8;
+    const logoLeft = PADDING;
+    const logoTop  = imgH - lh - PADDING;
+
+    const composited = await sharp(imgBuffer)
+      .composite([
+        { input: bgSvg,    left: bgLeft,   top: bgTop,   blend: 'over' },
+        { input: logoData, left: logoLeft, top: logoTop, blend: 'over' },
+      ])
+      .jpeg({ quality: 92 })
+      .toBuffer();
+
+    console.log(`[ai-image] ✓ logo "${lottery}" composto (${lw}×${lh}px)`);
+    return composited;
+  } catch (err) {
+    console.warn(`[ai-image] composição de logo falhou (${lottery}):`, (err as Error).message);
+    return imgBuffer; // fail-safe: retorna original
+  }
+}
+
 // ── Função principal ────────────────────────────────────────────────────────
 
-export async function generateLotteryImage(imagePrompt: string): Promise<string | null> {
+export async function generateLotteryImage(imagePrompt: string, lottery?: string): Promise<string | null> {
   let imgBuffer: Buffer | null = null;
 
   // 1. NVIDIA NIM FLUX.1-schnell — primário, maior qualidade
@@ -256,6 +323,11 @@ export async function generateLotteryImage(imagePrompt: string): Promise<string 
   if (!imgBuffer) {
     console.warn('[ai-image] todos os provedores falharam — artigo salvo sem imagem');
     return null;
+  }
+
+  // Compositar logo da loteria sobre a imagem gerada
+  if (lottery) {
+    imgBuffer = await compositeLotteryLogo(imgBuffer, lottery);
   }
 
   // Upload para Supabase Storage

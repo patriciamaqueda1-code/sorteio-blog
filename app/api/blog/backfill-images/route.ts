@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     // Usa image_prompt salvo no artigo, ou gera um novo a partir do slug
     const prompt = post.image_prompt || buildImagePrompt(post.lottery ?? 'loteria', post.concurso_number ?? 0);
 
-    const imageUrl = await generateLotteryImage(prompt);
+    const imageUrl = await generateLotteryImage(prompt, post.lottery ?? undefined);
 
     if (!imageUrl) {
       results.push({ id: post.id, slug: post.slug, status: 'image_failed' });

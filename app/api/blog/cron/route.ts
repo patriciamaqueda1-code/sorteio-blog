@@ -171,7 +171,7 @@ export async function GET(req: NextRequest) {
 
       // 6b. Gerar imagem de capa via fal.ai FLUX (non-blocking — falha não cancela artigo)
       const imagePromptText = buildImagePrompt(lottery, numero);
-      const coverImageUrl = await generateLotteryImage(imagePromptText);
+      const coverImageUrl = await generateLotteryImage(imagePromptText, lottery);
 
       // 7. Schema.org
       const now = new Date().toISOString();
