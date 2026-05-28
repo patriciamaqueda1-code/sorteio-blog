@@ -154,6 +154,60 @@ const LOTTERY_COLORS: Record<string, { primary: string; accent: string; balls: s
 
 // ── Helpers internos ────────────────────────────────────────────────────────
 
+/** Together AI — FLUX.1-schnell-Free (gratuito, qualidade excelente) */
+async function _togetherAI(prompt: string): Promise<Buffer> {
+  console.log('[ai-image] Together AI FLUX.1-schnell-Free…');
+  const res = await fetch('https://api.together.xyz/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'black-forest-labs/FLUX.1-schnell-Free',
+      prompt,
+      width: 1280,
+      height: 720,
+      steps: 4,
+      n: 1,
+      response_format: 'b64_json',
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`);
+  const data = await res.json() as { data?: Array<{ b64_json?: string }> };
+  const base64 = data.data?.[0]?.b64_json;
+  if (!base64) throw new Error('Together AI: sem imagem na resposta');
+  return Buffer.from(base64, 'base64');
+}
+
+/** fal.ai — FLUX.1-schnell (pago ~$0.003/img, velocidade e qualidade máximas) */
+async function _falAI(prompt: string): Promise<Buffer> {
+  console.log('[ai-image] fal.ai FLUX.1-schnell…');
+  const res = await fetch('https://fal.run/fal-ai/flux/schnell', {
+    method: 'POST',
+    headers: {
+      Authorization: `Key ${process.env.FAL_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      image_size: 'landscape_16_9',
+      num_images: 1,
+      num_inference_steps: 4,
+      enable_safety_checker: false,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`);
+  const data = await res.json() as { images?: Array<{ url?: string }> };
+  const imageUrl = data.images?.[0]?.url;
+  if (!imageUrl) throw new Error('fal.ai: sem URL de imagem na resposta');
+  const dl = await fetch(imageUrl, { signal: AbortSignal.timeout(30_000) });
+  if (!dl.ok) throw new Error(`fal.ai download HTTP ${dl.status}`);
+  return Buffer.from(await dl.arrayBuffer());
+}
+
 async function _nvidiaFlux(prompt: string): Promise<Buffer> {
   console.log('[ai-image] NVIDIA NIM FLUX.1-schnell…');
   const res = await fetch('https://integrate.api.nvidia.com/v1/images/generations', {
@@ -280,7 +334,27 @@ async function compositeLotteryLogo(imgBuffer: Buffer, lottery: string): Promise
 export async function generateLotteryImage(imagePrompt: string, lottery?: string): Promise<string | null> {
   let imgBuffer: Buffer | null = null;
 
-  // 1. NVIDIA NIM FLUX.1-schnell — primário, maior qualidade
+  // 1. Together AI FLUX.1-schnell-Free — primário (gratuito, qualidade excelente)
+  if (!imgBuffer && process.env.TOGETHER_API_KEY) {
+    try {
+      imgBuffer = await _togetherAI(imagePrompt);
+      console.log(`[ai-image] ✓ Together AI FLUX.1-schnell-Free (${imgBuffer.length} bytes)`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ Together AI:', (err as Error).message);
+    }
+  }
+
+  // 2. fal.ai FLUX.1-schnell — segunda opção premium
+  if (!imgBuffer && process.env.FAL_KEY) {
+    try {
+      imgBuffer = await _falAI(imagePrompt);
+      console.log(`[ai-image] ✓ fal.ai FLUX.1-schnell (${imgBuffer.length} bytes)`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ fal.ai:', (err as Error).message);
+    }
+  }
+
+  // 3. NVIDIA NIM FLUX.1-schnell — terceiro
   if (!imgBuffer && process.env.NVIDIA_API_KEY) {
     try {
       imgBuffer = await _nvidiaFlux(imagePrompt);
@@ -290,7 +364,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 2. NVIDIA NIM SDXL — secundário NVIDIA
+  // 4. NVIDIA NIM SDXL — quarto
   if (!imgBuffer && process.env.NVIDIA_API_KEY) {
     try {
       imgBuffer = await _nvidiaSdxl(imagePrompt);
@@ -300,7 +374,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 3. Pollinations.ai "flux" — fallback gratuito
+  // 5. Pollinations.ai "flux" — fallback emergência
   if (!imgBuffer) {
     try {
       imgBuffer = await _pollinations(imagePrompt, 'flux');
@@ -310,7 +384,7 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
     }
   }
 
-  // 4. Pollinations.ai "turbo" — último recurso
+  // 6. Pollinations.ai "turbo" — último recurso absoluto
   if (!imgBuffer) {
     try {
       imgBuffer = await _pollinations(imagePrompt, 'turbo');
@@ -351,19 +425,51 @@ export async function generateLotteryImage(imagePrompt: string, lottery?: string
   }
 }
 
+/** Contexto opcional para gerar prompts mais específicos ao sorteio */
+export interface ImageContext {
+  accumulated?: boolean;
+  prize_main?: number;       // valor em R$
+  winners_count?: number;
+}
+
 /**
  * Prompt de imagem de capa específico por loteria.
- * Usa as cores e identidade visual oficial de cada loteria brasileira.
+ * Usa as cores oficiais da loteria + contexto do sorteio (acumulado, prêmio, ganhadores).
  */
-export function buildImagePrompt(lottery: string, concurso: number): string {
+export function buildImagePrompt(lottery: string, concurso: number, ctx?: ImageContext): string {
   const name    = LOTTERY_LABELS[lottery] ?? lottery;
   const palette = LOTTERY_COLORS[lottery] ?? { primary: '#260085', accent: '#f6d27a', balls: 'golden spheres' };
 
-  return `Dramatic lottery draw moment for "${name} Concurso ${concurso}". \
-${palette.balls} floating dramatically against ultra-dark background, \
-cinematic volumetric light beams in ${palette.primary}, bokeh depth of field, \
-lottery machine glass sphere visible, golden number display showing lucky numbers, \
-photorealistic 8K render, sharp focus, professional photography lighting. \
-Color palette: ${palette.primary}, ${palette.accent}, deep black, gold accents. \
-No text, no people, no faces. Pure abstract drama.`;
+  // Definir o clima emocional com base no contexto
+  let mood: string;
+  let prizeLine = '';
+
+  if (ctx?.accumulated) {
+    const millions = ctx.prize_main ? Math.round(ctx.prize_main / 1_000_000) : null;
+    mood = 'MEGA JACKPOT ACCUMULATED — overwhelming golden explosion, coins raining, euphoric abundance, record-breaking energy';
+    if (millions && millions >= 10) {
+      prizeLine = ` Massive ${millions} million reais jackpot visual metaphor — overflowing treasure, colossal golden sphere.`;
+    }
+  } else if (ctx?.winners_count === 0) {
+    mood = 'no winner tonight — deep suspense, dark dramatic tension, anticipation building toward next draw';
+  } else if (ctx?.winners_count && ctx.winners_count > 0) {
+    mood = `winner celebration — confetti explosion, triumphant golden light beams, victory moment`;
+    if (ctx.winners_count > 1) {
+      mood += `, ${ctx.winners_count} lucky winners sharing the prize`;
+    }
+  } else {
+    mood = 'dramatic lottery draw moment — cinematic tension, lucky numbers revealed';
+  }
+
+  return (
+    `Premium lottery magazine cover photo for ${name} draw #${concurso}. ${mood}.${prizeLine} ` +
+    `${palette.balls} floating in ultra-dark cinematic space, ` +
+    `dramatic volumetric god-rays in ${palette.primary} and ${palette.accent}, ` +
+    `close-up lottery machine glass sphere with numbered balls inside, bokeh depth-of-field, ` +
+    `shimmering light reflections, photorealistic 8K commercial photography, sharp crisp focus, ` +
+    `professional studio lighting. ` +
+    `Color palette strictly: ${palette.primary}, ${palette.accent}, deep obsidian black, 24-karat gold accents. ` +
+    `Hyper-detailed, award-winning product photo. ` +
+    `No text overlay, no people, no faces, no hands. Pure cinematic visual drama.`
+  );
 }
