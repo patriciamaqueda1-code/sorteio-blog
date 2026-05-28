@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getPostBySlug, getRelatedPosts, LOTTERY_LABELS } from '@/lib/blog';
+import { LotteryNav } from '@/components/LotteryNav';
 import type { BlogPost } from '@/types/blog';
 
 const BASE_URL = 'https://blog.sorteiobilionario.com.br';
@@ -313,7 +314,7 @@ async function ArticleContent({ slug }: { slug: string }) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Início', item: MAIN_SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BASE_URL}/blog` },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: BASE_URL },
       ...(lotteryLabel ? [{ '@type': 'ListItem', position: 3, name: lotteryLabel, item: `${BASE_URL}/blog/${post.lottery}` }] : []),
       { '@type': 'ListItem', position: lotteryLabel ? 4 : 3, name: post.title, item: canonicalUrl },
     ],
@@ -334,17 +335,20 @@ async function ArticleContent({ slug }: { slug: string }) {
   return (
     <>
       {/* Breadcrumb visual */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 mb-6 flex-wrap">
         <a href={MAIN_SITE_URL} className="hover:text-[#f6d27a] transition-colors">Início</a>
         <span>/</span>
-        <Link href="/blog" className="hover:text-[#f6d27a] transition-colors">Blog</Link>
+        <Link href="/" className="hover:text-[#f6d27a] transition-colors">Blog</Link>
         {lotteryLabel && post.lottery && (
           <>
             <span>/</span>
-            <Link href={`/blog/${post.lottery}`} className="hover:text-[#f6d27a] transition-colors">{lotteryLabel}</Link>
+            <Link href={`/blog/loteria/${post.lottery}`} className="hover:text-[#f6d27a] transition-colors">{lotteryLabel}</Link>
           </>
         )}
       </nav>
+
+      {/* Navegação por loteria — logos clicáveis com hover lift */}
+      <LotteryNav activeLottery={post.lottery ?? undefined} />
 
       {/* Cover image */}
       {post.cover_image_url && (

@@ -136,15 +136,18 @@ async function LotteryPostList({ lottery, page }: { lottery: string; page: numbe
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {posts.map((post: BlogPost) => (
           <article key={post.id} className="flex flex-col bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-[#f6d27a]/40 transition-colors group">
-            {post.cover_image_url ? (
-              <div className="aspect-video overflow-hidden">
-                <img src={post.cover_image_url} alt={post.cover_alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" width={640} height={360} />
-              </div>
-            ) : (
-              <div className="aspect-video bg-gradient-to-br from-purple-900/40 via-[#07060d] to-emerald-900/20 flex items-center justify-center">
-                <span className="text-5xl" role="img" aria-label={label}>🎰</span>
-              </div>
-            )}
+            {/* Cover — clicável */}
+            <Link href={`/${post.slug}`} tabIndex={-1} aria-hidden="true">
+              {post.cover_image_url ? (
+                <div className="aspect-video overflow-hidden">
+                  <img src={post.cover_image_url} alt={post.cover_alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" width={640} height={360} />
+                </div>
+              ) : (
+                <div className="aspect-video bg-gradient-to-br from-purple-900/40 via-[#07060d] to-emerald-900/20 flex items-center justify-center">
+                  <span className="text-5xl" role="img" aria-label={label}>🎰</span>
+                </div>
+              )}
+            </Link>
             <div className="flex flex-col flex-1 p-5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-semibold text-[#f6d27a] uppercase tracking-wider">{label}</span>
@@ -156,14 +159,19 @@ async function LotteryPostList({ lottery, page }: { lottery: string; page: numbe
                 )}
               </div>
               <h2 className="text-white font-semibold text-base leading-snug mb-2 line-clamp-2 flex-1">
-                <Link href={`/blog/${post.slug}`} className="hover:text-[#f6d27a] transition-colors">{post.title}</Link>
+                <Link href={`/${post.slug}`} className="hover:text-[#f6d27a] transition-colors">{post.title}</Link>
               </h2>
               <p className="text-gray-400 text-sm line-clamp-3 mb-4">{post.excerpt}</p>
-              {post.published_at && (
-                <time className="text-xs text-gray-600" dateTime={post.published_at}>
-                  {new Date(post.published_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </time>
-              )}
+              <div className="flex items-center justify-between gap-2 mt-auto">
+                {post.published_at && (
+                  <time className="text-xs text-gray-600" dateTime={post.published_at}>
+                    {new Date(post.published_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </time>
+                )}
+                <Link href={`/${post.slug}`} className="text-xs text-[#f6d27a] font-semibold hover:underline shrink-0">
+                  Ler artigo →
+                </Link>
+              </div>
             </div>
           </article>
         ))}
@@ -240,7 +248,7 @@ export default async function LotteryPage({ params, searchParams }: Props) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Início', item: MAIN_SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BASE_URL}/blog` },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: BASE_URL },
       { '@type': 'ListItem', position: 3, name: label, item: categoryUrl },
     ],
   };
@@ -255,7 +263,7 @@ export default async function LotteryPage({ params, searchParams }: Props) {
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 mb-8">
         <a href={MAIN_SITE_URL} className="hover:text-[#f6d27a] transition-colors">Início</a>
         <span>/</span>
-        <Link href="/blog" className="hover:text-[#f6d27a] transition-colors">Blog</Link>
+        <Link href="/" className="hover:text-[#f6d27a] transition-colors">Blog</Link>
         <span>/</span>
         <span className="text-[#f6d27a]">{label}</span>
       </nav>

@@ -39,8 +39,15 @@ const config: NextConfig = {
   // Redireciona URLs antigas /blog/:slug → /:slug (SEO 301 permanente)
   async redirects() {
     return [
+      // /blog (listagem) → / (root subdomínio — evita URL redundante)
       {
-        source: '/blog/:slug((?!loteria|page|$).*)',
+        source: '/blog',
+        destination: '/',
+        permanent: true,
+      },
+      // /blog/:slug (artigos antigos) → /:slug
+      {
+        source: '/blog/:slug((?!loteria|page).*)',
         destination: '/:slug',
         permanent: true,
       },
