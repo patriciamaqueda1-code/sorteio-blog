@@ -12,6 +12,38 @@ import { existsSync } from 'fs';
 import sharp from 'sharp';
 import { slugify, LOTTERY_LABELS } from './blog';
 import { supabase } from './supabase';
+import * as opentype from 'opentype.js';
+import { CARD_FONT_B64 } from './card-font';
+
+// Fonte ArchivoBlack carregada 1x. O texto do card é renderizado como PATHS (vetores),
+// NÃO como <text> — assim NÃO depende de fonte instalada no servidor. O Vercel/Linux não
+// tem Arial nem fontes do sistema → <text> virava quadradinhos (tofu). Path resolve de vez.
+const _fontBuf = Buffer.from(CARD_FONT_B64, 'base64');
+const CARD_FONT = opentype.parse(
+  _fontBuf.buffer.slice(_fontBuf.byteOffset, _fontBuf.byteOffset + _fontBuf.byteLength)
+);
+
+/** Texto → <path> SVG vetorizado (independe de fonte no servidor). */
+function tPath(
+  text: string, x: number, y: number, size: number, fill: string,
+  anchor: 'start' | 'middle' | 'end' = 'start', opacity = 1, letterSpacing = 0,
+): string {
+  let adv = CARD_FONT.getAdvanceWidth(text, size);
+  if (letterSpacing) adv += letterSpacing * Math.max(0, text.length - 1);
+  let dx = x;
+  if (anchor === 'middle') dx = x - adv / 2;
+  else if (anchor === 'end') dx = x - adv;
+  if (letterSpacing) {
+    let cx = dx, d = '';
+    for (const ch of [...text]) {
+      d += CARD_FONT.getPath(ch, cx, y, size).toPathData(2);
+      cx += CARD_FONT.getAdvanceWidth(ch, size) + letterSpacing;
+    }
+    return `<path d="${d}" fill="${fill}" opacity="${opacity}"/>`;
+  }
+  const d = CARD_FONT.getPath(text, dx, y, size).toPathData(2);
+  return `<path d="${d}" fill="${fill}" opacity="${opacity}"/>`;
+}
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -439,7 +471,7 @@ async function generateBrandedCard(data: CardData): Promise<Buffer> {
       <circle cx="${cx}" cy="${ballY}" r="${BALL_R}" fill="${p}" opacity="0.92"/>
       <circle cx="${cx}" cy="${ballY}" r="${BALL_R - 4}" fill="none" stroke="${a}" stroke-width="2.5" opacity="0.55"/>
       <circle cx="${cx}" cy="${ballY - Math.round(BALL_R*0.3)}" r="${Math.round(BALL_R*0.22)}" fill="white" opacity="0.12"/>
-      <text x="${cx}" y="${ballY + Math.round(fontSize*0.37)}" font-family="Arial Black,sans-serif" font-size="${fontSize}" font-weight="900" fill="white" text-anchor="middle">${label}</text>`;
+      ${tPath(label, cx, ballY + Math.round(fontSize*0.37), fontSize, 'white', 'middle')}`;
   }).join('');
 
   const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
@@ -475,21 +507,17 @@ async function generateBrandedCard(data: CardData): Promise<Buffer> {
   <rect x="0" y="0" width="${W}" height="100" fill="url(#hdr)" opacity="0.85"/>
 
   <!-- Nome da loteria -->
-  <text x="90" y="68" font-family="Arial Black,sans-serif" font-size="42" font-weight="900"
-        fill="white" filter="url(#tgl)">${name}</text>
+  ${tPath(name, 90, 70, 42, 'white')}
 
   <!-- Concurso no canto superior direito -->
-  <text x="${W - 80}" y="58" font-family="Arial,sans-serif" font-size="20" fill="${a}"
-        text-anchor="end" opacity="0.9">Concurso #${data.concurso}</text>
-  <text x="${W - 80}" y="80" font-family="Arial,sans-serif" font-size="14" fill="white"
-        text-anchor="end" opacity="0.5">RESULTADO OFICIAL</text>
+  ${tPath(`Concurso #${data.concurso}`, W - 80, 58, 20, a, 'end', 0.9)}
+  ${tPath('RESULTADO OFICIAL', W - 80, 80, 14, 'white', 'end', 0.5)}
 
   <!-- Linha separadora -->
   <line x1="80" y1="116" x2="${W - 80}" y2="116" stroke="${a}" stroke-width="1" opacity="0.35"/>
 
   <!-- Label dezenas -->
-  <text x="${W/2}" y="168" font-family="Arial,sans-serif" font-size="14" fill="${a}"
-        text-anchor="middle" opacity="0.6" letter-spacing="4">DEZENAS SORTEADAS</text>
+  ${tPath('DEZENAS SORTEADAS', W/2, 168, 14, a, 'middle', 0.6, 4)}
 
   <!-- Bolas -->
   <g filter="url(#gl)">${ballsSvg}</g>
@@ -498,16 +526,13 @@ async function generateBrandedCard(data: CardData): Promise<Buffer> {
   <line x1="80" y1="${H - 148}" x2="${W - 80}" y2="${H - 148}" stroke="${a}" stroke-width="1" opacity="0.3"/>
 
   <!-- Status (ACUMULOU / GANHADORES) -->
-  <text x="${W/2}" y="${H - 100}" font-family="Arial Black,sans-serif" font-size="32" font-weight="900"
-        fill="${statusColor}" text-anchor="middle" filter="url(#tgl)">${statusText}</text>
+  ${tPath(statusText, W/2, H - 100, 32, statusColor, 'middle')}
 
   <!-- Prêmio -->
-  ${prizeStr ? `<text x="${W/2}" y="${H - 60}" font-family="Arial,sans-serif" font-size="20" fill="white"
-        text-anchor="middle" opacity="0.85">${data.accumulated ? 'Próximo prêmio estimado: ' : 'Prêmio: '}${prizeStr}</text>` : ''}
+  ${prizeStr ? tPath(`${data.accumulated ? 'Próximo prêmio estimado: ' : 'Prêmio: '}${prizeStr}`, W/2, H - 60, 20, 'white', 'middle', 0.85) : ''}
 
   <!-- Marca bottom right -->
-  <text x="${W - 80}" y="${H - 28}" font-family="Arial,sans-serif" font-size="13" fill="${a}"
-        text-anchor="end" opacity="0.5">sorteiobilionario.com.br</text>
+  ${tPath('sorteiobilionario.com.br', W - 80, H - 28, 13, a, 'end', 0.5)}
 </svg>`;
 
   return sharp(Buffer.from(svg)).jpeg({ quality: 95 }).toBuffer();
