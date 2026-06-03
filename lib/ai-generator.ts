@@ -186,6 +186,34 @@ async function _googleImagen(prompt: string): Promise<Buffer> {
 }
 
 /** Together AI — FLUX.1-schnell-Free (gratuito, qualidade excelente) */
+/**
+ * OpenAI gpt-image-1-mini — PRIMÁRIO. Melhor aderência ao tema da loteria
+ * (cores/bolas corretas), ~US$0.01/imagem (low quality). Requer OPENAI_API_KEY.
+ */
+async function _openaiImage(prompt: string): Promise<Buffer> {
+  console.log('[ai-image] OpenAI gpt-image-1-mini…');
+  const res = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-image-1-mini',
+      prompt,
+      size: '1536x1024',   // paisagem 3:2 — ideal pra capa de blog
+      quality: 'low',      // ~400 tokens de imagem = mais barato; ótima qualidade
+      n: 1,
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`);
+  const data = await res.json() as { data?: Array<{ b64_json?: string }> };
+  const base64 = data.data?.[0]?.b64_json;
+  if (!base64) throw new Error('OpenAI gpt-image-1-mini: sem imagem na resposta');
+  return Buffer.from(base64, 'base64');
+}
+
 async function _togetherAI(prompt: string): Promise<Buffer> {
   console.log('[ai-image] Together AI FLUX.1-schnell-Free…');
   const res = await fetch('https://api.together.xyz/v1/images/generations', {
@@ -490,7 +518,17 @@ async function generateBrandedCard(data: CardData): Promise<Buffer> {
 export async function generateLotteryImage(imagePrompt: string, lottery?: string, cardData?: CardData): Promise<string | null> {
   let imgBuffer: Buffer | null = null;
 
-  // 1. Google Imagen 3 — PRIMÁRIO (100/dia grátis com Gmail via Google AI Studio)
+  // 0. OpenAI gpt-image-1-mini — PRIMÁRIO (melhor aderência ao tema da loteria, ~US$0.01/img)
+  if (!imgBuffer && process.env.OPENAI_API_KEY) {
+    try {
+      imgBuffer = await _openaiImage(imagePrompt);
+      console.log(`[ai-image] ✓ OpenAI gpt-image-1-mini (${imgBuffer.length} bytes)`);
+    } catch (err) {
+      console.warn('[ai-image] ✗ OpenAI gpt-image-1-mini:', (err as Error).message);
+    }
+  }
+
+  // 1. Google Imagen 3 — fallback (100/dia grátis com Gmail via Google AI Studio)
   if (!imgBuffer && process.env.GOOGLE_AI_KEY) {
     try {
       imgBuffer = await _googleImagen(imagePrompt);
