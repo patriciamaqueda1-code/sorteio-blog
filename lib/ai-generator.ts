@@ -233,8 +233,8 @@ async function _openaiImage(prompt: string): Promise<Buffer> {
     body: JSON.stringify({
       model: 'gpt-image-1-mini',
       prompt,
-      size: '1536x1024',   // paisagem 3:2 — ideal pra capa de blog
-      quality: 'low',      // ~400 tokens de imagem = mais barato; ótima qualidade
+      size: '1536x1024',    // paisagem 3:2 — ideal pra capa de blog
+      quality: 'medium',    // qualidade nítida/profissional (~US$0,04/img). 'low' embaçava.
       n: 1,
     }),
     signal: AbortSignal.timeout(120_000),
@@ -692,36 +692,24 @@ export function buildImagePrompt(lottery: string, concurso: number, ctx?: ImageC
   const name    = LOTTERY_LABELS[lottery] ?? lottery;
   const palette = LOTTERY_COLORS[lottery] ?? { primary: '#260085', accent: '#f6d27a', balls: 'golden spheres' };
 
-  // Definir o clima emocional com base no contexto
-  let mood: string;
-  let prizeLine = '';
-
+  // Atmosfera conforme o contexto — CONCRETA (não abstrata). Prompts abstratos com
+  // hex/god-rays/"glass sphere" geravam imagens escuras e embaçadas. Prompt concreto de
+  // "bolas de loteria brilhantes com números" gera fotos nítidas e profissionais.
+  let mood = 'dramatic cinematic studio lighting';
   if (ctx?.accumulated) {
-    const millions = ctx.prize_main ? Math.round(ctx.prize_main / 1_000_000) : null;
-    mood = 'MEGA JACKPOT ACCUMULATED — overwhelming golden explosion, coins raining, euphoric abundance, record-breaking energy';
-    if (millions && millions >= 10) {
-      prizeLine = ` Massive ${millions} million reais jackpot visual metaphor — overflowing treasure, colossal golden sphere.`;
-    }
+    mood = 'triumphant golden glow with abundant golden sparkles and falling coins, celebratory jackpot atmosphere';
   } else if (ctx?.winners_count === 0) {
-    mood = 'no winner tonight — deep suspense, dark dramatic tension, anticipation building toward next draw';
+    mood = 'moody dramatic lighting with deep shadows and a suspenseful atmosphere';
   } else if (ctx?.winners_count && ctx.winners_count > 0) {
-    mood = `winner celebration — confetti explosion, triumphant golden light beams, victory moment`;
-    if (ctx.winners_count > 1) {
-      mood += `, ${ctx.winners_count} lucky winners sharing the prize`;
-    }
-  } else {
-    mood = 'dramatic lottery draw moment — cinematic tension, lucky numbers revealed';
+    mood = 'festive celebration with confetti and warm golden light beams, joyful winning atmosphere';
   }
 
   return (
-    `Premium lottery magazine cover photo for ${name} draw #${concurso}. ${mood}.${prizeLine} ` +
-    `${palette.balls} floating in ultra-dark cinematic space, ` +
-    `dramatic volumetric god-rays in ${palette.primary} and ${palette.accent}, ` +
-    `close-up lottery machine glass sphere with numbered balls inside, bokeh depth-of-field, ` +
-    `shimmering light reflections, photorealistic 8K commercial photography, sharp crisp focus, ` +
-    `professional studio lighting. ` +
-    `Color palette strictly: ${palette.primary}, ${palette.accent}, deep obsidian black, 24-karat gold accents. ` +
-    `Hyper-detailed, award-winning product photo. ` +
-    `No text overlay, no people, no faces, no hands. Pure cinematic visual drama.`
+    `Professional commercial product photograph of Brazilian "${name}" lottery balls. ` +
+    `A group of glossy ${palette.balls} together with white lottery balls, each with clear bold printed numbers, ` +
+    `arranged on a sleek dark reflective surface, golden sparkles and light particles floating in the air, ` +
+    `${mood}, shallow depth of field with soft bokeh background, ultra-detailed, crisp sharp focus, ` +
+    `vibrant, clean and modern, high-end studio photography, 8K. ` +
+    `No text, no words, no numbers as captions, no watermark, no logo, no people, no hands.`
   );
 }
