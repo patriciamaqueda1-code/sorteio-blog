@@ -47,6 +47,59 @@ function tPath(
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+/**
+ * Geração de texto JSON do artigo. Cadeia: OpenAI (PRINCIPAL, se houver
+ * OPENAI_API_KEY; modelo OPENAI_TEXT_MODEL, default gpt-4o) → Groq
+ * (llama-3.3-70b) como fallback. Os dois usam response_format json_object.
+ * Nunca quebra: se a OpenAI faltar/falhar, cai pro Groq exatamente como antes.
+ */
+async function generateArticleJSON(system: string, user: string): Promise<string> {
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const model = process.env.OPENAI_TEXT_MODEL || 'gpt-4o';
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+          temperature: 0.6,
+          max_tokens: 3000,
+          response_format: { type: 'json_object' },
+        }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (res.ok) {
+        const d = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+        const t = d.choices?.[0]?.message?.content;
+        if (t) { console.log(`[ai-text] ✓ OpenAI ${model}`); return t; }
+      } else {
+        console.warn('[ai-text] ✗ OpenAI', res.status, (await res.text().catch(() => '')).slice(0, 160));
+      }
+    } catch (err) {
+      console.warn('[ai-text] ✗ OpenAI erro:', (err as Error).message);
+    }
+  }
+  // Fallback: Groq (comportamento original)
+  const completion = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    temperature: 0.6,
+    max_tokens: 3000,
+    response_format: { type: 'json_object' },
+  });
+  return completion.choices[0]?.message?.content ?? '{}';
+}
+
 export interface GeneratedArticle {
   title: string;
   slug: string;
@@ -125,18 +178,7 @@ Retorne JSON com exatamente estes campos:
 }
 `;
 
-  const completion = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user',   content: userPrompt },
-    ],
-    temperature: 0.6,
-    max_tokens: 3000,
-    response_format: { type: 'json_object' },
-  });
-
-  const raw = completion.choices[0]?.message?.content ?? '{}';
+  const raw = await generateArticleJSON(SYSTEM_PROMPT, userPrompt);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let parsed: any;
   try { parsed = JSON.parse(raw); } catch { parsed = {}; }
